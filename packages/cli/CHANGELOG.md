@@ -1,5 +1,14 @@
 # sv
 
+## 0.5.8
+### Patch Changes
+
+
+- fix: quotes in `cd` output if necessary ([#207](https://github.com/sveltejs/cli/pull/207))
+
+
+- chore: update documentation url hash ([#208](https://github.com/sveltejs/cli/pull/208))
+
 ## 0.5.7
 ### Patch Changes
 
