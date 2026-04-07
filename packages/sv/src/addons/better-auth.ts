@@ -5,6 +5,7 @@ import {
 	color,
 	dedent,
 	transforms,
+	md,
 	resolveCommandArray,
 	createPrinter,
 	type TransformFn
@@ -40,7 +41,7 @@ export default defineAddon({
 		runsAfter('sveltekitAdapter');
 		runsAfter('tailwindcss');
 	},
-	run: ({ sv, language, options, directory, dependencyVersion, file }) => {
+	run: ({ sv, language, options, directory, dependencyVersion, file, packageManager }) => {
 		const svelte5 = !!dependencyVersion('svelte')?.startsWith('5');
 		const [ts, s5] = createPrinter(language === 'ts', svelte5);
 
@@ -514,6 +515,18 @@ export default defineAddon({
 				`;
 			});
 		}
+
+		const readmeLines = [
+			`Run \`${resolveCommandArray(packageManager, 'run', ['auth:schema']).join(' ')}\` to generate the auth schema`,
+			`Run \`${resolveCommandArray(packageManager, 'run', ['db:push']).join(' ')}\` to update your database`,
+			'Check `ORIGIN` & `BETTER_AUTH_SECRET` in `.env` and adjust it to your needs'
+		];
+		if (options.demo.includes('github')) {
+			readmeLines.push(
+				'Set your `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`'
+			);
+		}
+		sv.file('README.md', md.upsert('## Add-on Info > better-auth', readmeLines));
 	},
 
 	nextSteps: ({ options, packageManager }) => {

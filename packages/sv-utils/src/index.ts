@@ -27,6 +27,7 @@ export {
 export * as css from './tooling/css/index.ts';
 export * as js from './tooling/js/index.ts';
 export * as html from './tooling/html/index.ts';
+export * as md from './tooling/md.ts';
 export * as text from './tooling/text.ts';
 export * as json from './tooling/json.ts';
 export * as svelte from './tooling/svelte/index.ts';

@@ -2,6 +2,24 @@
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
+## Add-on Info
+
+### playwright
+
+- Run `npx playwright install` to download browsers
+
+### drizzle
+
+- Check `DATABASE_URL` in `.env` and adjust it to your needs
+- Run `pnpm run db:push` to update your database schema
+
+### better-auth
+
+- Run `pnpm run auth:schema` to generate the auth schema
+- Run `pnpm run db:push` to update your database
+- Check `ORIGIN` & `BETTER_AUTH_SECRET` in `.env` and adjust it to your needs
+- Set your `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`
+
 ## Creating a project
 
 If you're seeing this, you've probably already done this step. Congrats!

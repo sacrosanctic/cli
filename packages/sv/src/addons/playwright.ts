@@ -1,5 +1,5 @@
 import { log } from '@clack/prompts';
-import { color, dedent, transforms } from '@sveltejs/sv-utils';
+import { color, dedent, md, transforms } from '@sveltejs/sv-utils';
 import { defineAddon } from '../core/config.ts';
 import { addToDemoPage } from './common.ts';
 
@@ -88,6 +88,13 @@ export default defineAddon({
 					log.warn('Unexpected playwright config for playwright add-on. Could not update.');
 				}
 			})
+		);
+
+		sv.file(
+			'README.md',
+			md.upsert('## Add-on Info > playwright', [
+				'Run `npx playwright install` to download browsers'
+			])
 		);
 	},
 
