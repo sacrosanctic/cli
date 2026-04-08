@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts';
-import { color, loadPackageJson, resolveCommandArray } from '@sveltejs/sv-utils';
+import { color, loadPackageJson, md, resolveCommandArray } from '@sveltejs/sv-utils';
 import { Command, Option } from 'commander';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -335,6 +335,9 @@ async function createProject(cwd: ProjectPath, options: Options) {
 		await createProjectFromPlayground(options.fromPlayground, projectPath);
 	}
 
+	const readme = generateReadme(template, projectName);
+	fs.writeFileSync(path.join(projectPath, 'README.md'), readme);
+
 	p.log.success('Project created');
 
 	let argsFormattedAddons: string[] = [];
@@ -390,6 +393,12 @@ async function createProject(cwd: ProjectPath, options: Options) {
 	common.updateReadme(directory, prompt);
 
 	common.updateAgent(directory, language, packageManager ?? 'npm', loadedAddons);
+
+	const readmePath = path.join(directory, 'README.md');
+	if (fs.existsSync(readmePath)) {
+		const content = md.removeIfEmpty('## Add-on Info')(fs.readFileSync(readmePath, 'utf-8'));
+		fs.writeFileSync(readmePath, content);
+	}
 
 	if (packageManager) {
 		workspace.packageManager = packageManager;
@@ -486,4 +495,129 @@ export async function createVirtualWorkspace({
 	};
 
 	return virtualWorkspace;
+}
+
+function generateReadme(template: TemplateType, projectName: string): string {
+	if (template === 'addon') {
+		return generateAddonReadme(projectName);
+	}
+
+	const lines = [
+		'# sv',
+		'',
+		'Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).',
+		'',
+		'## Add-on Info',
+		''
+	];
+
+	lines.push(
+		'## Creating a project',
+		'',
+		"If you're seeing this, you've probably already done this step. Congrats!",
+		'',
+		'```sh',
+		'# create a new project',
+		'npx sv create my-app',
+		'```',
+		'',
+		'## Developing',
+		'',
+		"Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:",
+		'',
+		'```sh',
+		'npm run dev',
+		'',
+		'# or start the server and open the app in a new browser tab',
+		'npm run dev -- --open',
+		'```',
+		''
+	);
+
+	if (template === 'library') {
+		lines.push(
+			'Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.',
+			'',
+			'## Building',
+			'',
+			'To build your library:',
+			'',
+			'```sh',
+			'npm pack',
+			'```',
+			'',
+			'To create a production version of your showcase app:',
+			'',
+			'```sh',
+			'npm run build',
+			'```',
+			'',
+			'You can preview the production build with `npm run preview`.',
+			'',
+			'> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.',
+			'',
+			'## Publishing',
+			'',
+			'Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).',
+			'',
+			'To publish your library to [npm](https://www.npmjs.com):',
+			'',
+			'```sh',
+			'npm publish',
+			'```',
+			''
+		);
+	} else {
+		lines.push(
+			'## Building',
+			'',
+			'To create a production version of your app:',
+			'',
+			'```sh',
+			'npm run build',
+			'```',
+			'',
+			'You can preview the production build with `npm run preview`.',
+			'',
+			'> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.',
+			''
+		);
+	}
+
+	return lines.join('\n');
+}
+
+function generateAddonReadme(projectName: string): string {
+	const protocolName = projectName.startsWith('@') ? projectName.split('/')[0] : projectName;
+
+	return `# [sv](https://svelte.dev/docs/cli/overview) community add-on: [${projectName}](https://github.com/${projectName})
+
+> [!IMPORTANT]
+> Svelte maintainers have not reviewed community add-ons for malicious code. Use at your discretion
+
+## Usage
+
+To install the add-on, run:
+
+\`\`\`shell
+npx sv add ${protocolName}
+\`\`\`
+
+## What you get [TO BE FILLED...]
+
+- A super cool stuff
+- Another one!
+
+## Options [TO BE FILLED...]
+
+### \`who\`
+
+The name of the person to say hello to.
+
+Default: \`you\`
+
+\`\`\`shell
+npx sv add ${protocolName}="who:your-name"
+\`\`\`
+`;
 }

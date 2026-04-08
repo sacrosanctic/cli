@@ -4,6 +4,7 @@ import {
 	type TransformFn,
 	transforms,
 	pnpm,
+	md,
 	resolveCommandArray,
 	fileExists,
 	createPrinter
@@ -488,6 +489,27 @@ export default defineAddon({
 				});
 			})
 		);
+
+		const readmeLines: string[] = [];
+		if (options.database === 'd1') {
+			readmeLines.push(
+				'Add your `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_D1_TOKEN` to `.env`'
+			);
+			readmeLines.push(
+				`Run \`${resolveCommandArray(packageManager, 'run', ['wrangler', 'd1', 'create', '<DATABASE_NAME>']).join(' ')}\` to generate a D1 database ID`
+			);
+		}
+		if (options.docker) {
+			readmeLines.push(
+				`Run \`${resolveCommandArray(packageManager, 'run', ['db:start']).join(' ')}\` to start the docker container`
+			);
+		} else if (options.database !== 'd1') {
+			readmeLines.push('Check `DATABASE_URL` in `.env` and adjust it to your needs');
+		}
+		readmeLines.push(
+			`Run \`${resolveCommandArray(packageManager, 'run', ['db:push']).join(' ')}\` to update your database schema`
+		);
+		sv.file('README.md', md.upsert('## Add-on Info > drizzle', readmeLines));
 	},
 
 	nextSteps: ({ options, packageManager, cwd }) => {

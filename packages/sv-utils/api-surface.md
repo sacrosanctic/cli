@@ -578,6 +578,13 @@ declare function appendElement(
 	elementToAppend: SvelteAst.Fragment['nodes'][0]
 ): void;
 declare function addFromRawHtml(fragment: SvelteAst.Fragment, html: string): void;
+declare namespace md_d_exports {
+	export { removeIfEmpty, upsert$1 as upsert };
+}
+
+declare function upsert$1(selector: string, lines: string[]): (content: string) => string;
+
+declare function removeIfEmpty(selector: string): (content: string) => string;
 declare namespace text_d_exports {
 	export { upsert };
 }
@@ -810,6 +817,7 @@ export {
 	json_d_exports as json,
 	loadFile,
 	loadPackageJson,
+	md_d_exports as md,
 	parse,
 	pnpm_d_exports as pnpm,
 	resolveCommand,

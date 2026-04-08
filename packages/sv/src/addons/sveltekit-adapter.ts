@@ -2,6 +2,7 @@ import {
 	color,
 	text,
 	transforms,
+	md,
 	resolveCommandArray,
 	fileExists,
 	loadPackageJson,
@@ -46,7 +47,7 @@ export default defineAddon({
 	setup: ({ isKit, unsupported }) => {
 		if (!isKit) unsupported('Requires SvelteKit');
 	},
-	run: ({ sv, options, file, cwd }) => {
+	run: ({ sv, options, file, cwd, packageManager }) => {
 		const adapter = adapters.find((a) => a.id === options.adapter)!;
 
 		// removes previously installed adapters
@@ -226,6 +227,15 @@ export default defineAddon({
 					})
 				);
 			}
+		}
+
+		if (options.adapter === 'cloudflare') {
+			sv.file(
+				'README.md',
+				md.upsert('## Add-on Info > cloudflare-adapter', [
+					`Run \`${resolveCommandArray(packageManager, 'run', ['gen']).join(' ')}\` to update cloudflare types`
+				])
+			);
 		}
 	},
 	nextSteps({ options, packageManager }) {
