@@ -108,7 +108,7 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 				);
 				const rerouteIdentifier = js.variables.declaration(ast, {
 					kind: 'const',
-					name: `reroute${language === 'ts' ? ': Reroute' : ''}`,
+					name: `reroute${ts(': Reroute')}`,
 					value: expression
 				});
 
@@ -195,6 +195,82 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 
 		const { validLanguageTags } = parseLanguageTagInput(options.languageTags);
 
+		// paraglide component
+		sv.file(
+			`${directory.kitRoutes}/Paraglide.svelte`,
+			transforms.svelteScript({ language }, ({ ast, js, svelte }) => {
+				// @ts-expect-error - ensureModule is typed with asserts but TS doesn't narrow properly
+				svelte.ensureModule(ast, { language });
+				const moduleScript = ast.module!;
+
+				js.imports.addNamed(moduleScript.content, {
+					imports: ['asdf'],
+					from: 'asdf'
+				});
+
+				if (language === 'ts')
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['Locale'],
+						from: '$lib/paraglide/runtime',
+						isType: true
+					});
+
+				js.imports.addNamed(ast.instance.content, { imports: ['browser'], from: '$app/env' });
+				js.imports.addNamed(ast.instance.content, {
+					imports: ['goto', 'onNavigate'],
+					from: '$app/navigation'
+				});
+				js.imports.addNamed(ast.instance.content, { imports: ['page'], from: '$app/state' });
+				js.imports.addNamed(ast.instance.content, {
+					imports: [
+						'baseLocale',
+						'getLocaleForUrl',
+						'locales',
+						'localizeHref',
+						'overwriteGetLocale',
+						'overwriteSetLocale',
+						'toLocale'
+					],
+					from: '$lib/paraglide/runtime'
+				});
+				js.imports.addNamed(ast.instance.content, {
+					imports: ['resolve'],
+					from: '$app/paths'
+				});
+				if (language === 'ts')
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['PathnameWithSearchOrHash'],
+						from: '$app/types',
+						isType: true
+					});
+
+				const localizeFn = dedent`
+					export const localize = (url${ts(': URL')}, options: { locale${ts(': Locale')} }) => {
+						const relative = url.pathname + url.search + url.hash;
+						const localized = localizeHref(relative, options)${ts(' as PathnameWithSearchOrHash')};
+						const resolved = resolve(localized);
+						return resolved;
+					};`;
+				js.common.appendFromString(ast.instance.content, { code: localizeFn });
+
+				const scriptBlock = dedent`
+					let locale${ts(': Locale')} = $state((browser && toLocale(document.querySelector('html')?.lang)) || baseLocale);
+
+					overwriteGetLocale(() => locale);
+
+					overwriteSetLocale((newLocale) => {
+						locale = newLocale;
+						goto(localize(page.url, { locale }));
+					});
+
+					onNavigate((navigation) => {
+						if (navigation.to) locale = getLocaleForUrl(navigation.to.url);
+					});`;
+
+				js.common.appendFromString(ast.instance.content, { code: scriptBlock });
+			})
+		);
+
 		sv.file(
 			'project.inlang/settings.json',
 			transforms.json(({ data }) => {
@@ -237,6 +313,12 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 						</div>`,
 					{ language }
 				);
+				js.imports.addDefault(ast.instance.content, {
+					from: './Paraglide.svelte',
+					as: 'Paraglide'
+				});
+
+				svelte.addFragment(ast, `<Paraglide />`, { language });
 			})
 		);
 
@@ -272,8 +354,11 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 							isType: true
 						});
 					}
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['localize'],
+						from: '../../Paraglide.svelte'
+					});
 
-					// add localized message
 					let templateCode = "<h1>{m.hello_world({ name: 'SvelteKit User' })}</h1>";
 
 					// add links to other localized pages, the first one is the default
@@ -283,20 +368,24 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 						.join('');
 					templateCode += `<div>${links}</div>`;
 
-          templateCode += dedent`
-            <div>
-              <p>Links:</p>
-              <ul>
-                {#each locales as locale (locale)}
-                  <li><a href={resolve(localizeHref(page.url.href, { locale })${ts(' as Pathname')})}>{locale}</a></li>
-                {/each}
-              </ul>
-            </div>
-            <div>
-              <p>Buttons:</p>
-              <ul>
-                {#each locales as locale (locale)}
-                  <li>
+					templateCode += `
+					<nav>
+						{#each locales as locale (locale)}
+							<li>
+								<a href={localize(page.url, { locale })}>{locale}</a>
+							</li>
+						{/each}
+					</nav>
+
+					<br />
+					<div>or</div>
+					<br />
+
+					<div>
+						{#each locales as locale (locale)}
+							<button onclick={() => setLocale(locale)}>{locale}</button>
+						{/each}
+					</div>`;
 
 					templateCode +=
 						'<p>If you use VSCode, install the <a href="https://marketplace.visualstudio.com/items?itemName=inlang.vs-code-extension" target="_blank">Sherlock i18n extension</a> for a better i18n experience.</p>';
