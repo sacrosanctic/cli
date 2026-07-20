@@ -229,6 +229,7 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 				svelte.addFragment(
 					ast,
 					dedent`
+						<!-- For SSG -->
 						<div style="display:none">
 							{#each locales as locale (locale)}
 								<a href={resolve(localizeHref(page.url.pathname, { locale })${ts(` as ${pathType}`)})}>{locale}</a>
