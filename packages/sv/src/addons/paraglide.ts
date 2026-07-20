@@ -247,27 +247,51 @@ export default defineAddon({
 						from: `${lib}/paraglide/messages.js`
 					});
 					js.imports.addNamed(ast.instance.content, {
-						imports: {
-							setLocale: 'setLocale'
-						},
+						imports: ['setLocale', 'locales', 'localizeHref'],
 						from: `${lib}/paraglide/runtime.js`
 					});
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['page'],
+						from: '$app/state'
+					});
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['resolve'],
+						from: '$app/paths'
+					});
+					if (language === 'ts') {
+						js.imports.addNamed(ast.instance.content, {
+							imports: ['Pathname'],
+							from: '$app/types',
+							isType: true
+						});
+					}
 
 					// add localized message
 					let templateCode = "<h1>{m.hello_world({ name: 'SvelteKit User' })}</h1>";
 
-					// add links to other localized pages, the first one is the default
-					// language, thus it does not require any localized route
-					const { validLanguageTags } = parseLanguageTagInput(options.languageTags);
-					const links = validLanguageTags
-						.map((x) => `<button onclick={() => setLocale('${x}')}>${x}</button>`)
-						.join('');
-					templateCode += `<div>${links}</div>`;
+					// add links and buttons for locale switching
+					templateCode += dedent`
+						<div>
+							<p>Links:</p>
+							<ul>
+								{#each locales as locale (locale)}
+									<li><a href={resolve(localizeHref(page.url.href, { locale })${ts(' as Pathname')})}>{locale}</a></li>
+								{/each}
+							</ul>
+						</div>
+						<div>
+							<p>Buttons:</p>
+							<ul>
+								{#each locales as locale (locale)}
+									<li><button onclick={() => setLocale(locale)}>{locale}</button></li>
+								{/each}
+							</ul>
+						</div>`;
 
 					templateCode +=
 						'<p>If you use VSCode, install the <a href="https://marketplace.visualstudio.com/items?itemName=inlang.vs-code-extension" target="_blank">Sherlock i18n extension</a> for a better i18n experience.</p>';
 
-					svelte.addFragment(ast, templateCode);
+					svelte.addFragment(ast, templateCode, { language });
 				})
 			);
 		}
