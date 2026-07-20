@@ -254,11 +254,24 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 						from: `${lib}/paraglide/messages.js`
 					});
 					js.imports.addNamed(ast.instance.content, {
-						imports: {
-							setLocale: 'setLocale'
-						},
+						imports: ['setLocale', 'locales', 'localizeHref'],
 						from: `${lib}/paraglide/runtime.js`
 					});
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['page'],
+						from: '$app/state'
+					});
+					js.imports.addNamed(ast.instance.content, {
+						imports: ['resolve'],
+						from: '$app/paths'
+					});
+					if (language === 'ts') {
+						js.imports.addNamed(ast.instance.content, {
+							imports: ['Pathname'],
+							from: '$app/types',
+							isType: true
+						});
+					}
 
 					// add localized message
 					let templateCode = "<h1>{m.hello_world({ name: 'SvelteKit User' })}</h1>";
@@ -270,10 +283,25 @@ const addon: Addon<AddonOptions<ParaglideOptions>, 'paraglide'> = defineAddon({
 						.join('');
 					templateCode += `<div>${links}</div>`;
 
+          templateCode += dedent`
+            <div>
+              <p>Links:</p>
+              <ul>
+                {#each locales as locale (locale)}
+                  <li><a href={resolve(localizeHref(page.url.href, { locale })${ts(' as Pathname')})}>{locale}</a></li>
+                {/each}
+              </ul>
+            </div>
+            <div>
+              <p>Buttons:</p>
+              <ul>
+                {#each locales as locale (locale)}
+                  <li>
+
 					templateCode +=
 						'<p>If you use VSCode, install the <a href="https://marketplace.visualstudio.com/items?itemName=inlang.vs-code-extension" target="_blank">Sherlock i18n extension</a> for a better i18n experience.</p>';
 
-					svelte.addFragment(ast, templateCode);
+					svelte.addFragment(ast, templateCode, { language });
 				})
 			);
 		}
