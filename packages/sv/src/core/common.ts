@@ -364,3 +364,36 @@ export async function runAndValidateVerifications(verifications: Verification[])
 		}
 	}
 }
+
+// const fails: Array<{ name: string; message?: string }> = [];
+// for (const verification of verifications) {
+// 	const { message, success } = await verification.run();
+// 	if (!success) fails.push({ name: verification.name, message });
+// }
+
+// if (fails.length > 0) {
+// 	const message = fails
+// 		.map(({ name, message }) => {
+// 			let result = color.warning(`- ${name}`);
+// 			if (message) {
+// 				const lines = message?.split('\n');
+// 				result += '\n\n';
+// 				result +=
+// 					lines.length > 5 ? [...lines.slice(0, 5), `... (${lines.length - 5} more)`] : lines;
+// 			}
+
+// 			return result;
+// 		})
+// 		.join('\n');
+
+// 	p.note(message, 'Verifications failed', { format: (line) => line });
+
+// 	const force = await p.confirm({
+// 		message: 'Verifications failed. Do you wish to continue?',
+// 		initialValue: false
+// 	});
+// 	if (p.isCancel(force) || !force) {
+// 		p.cancel('Operation cancelled.');
+// 		process.exit(1);
+// 	}
+// }

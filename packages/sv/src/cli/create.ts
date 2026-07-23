@@ -211,11 +211,19 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 			force: async ({ results: { directory } }) => {
 				if (!options.dirCheck) return;
 
-				if (!fs.existsSync(directory!)) return;
+				if (!directory || !fs.existsSync(directory)) return;
 
-				const files = fs.readdirSync(directory!);
+				const files = fs.readdirSync(directory);
 				const hasNonIgnoredFiles = files.some((file) => !file.startsWith('.git'));
 				if (!hasNonIgnoredFiles) return;
+
+				const displayFiles =
+					files.length > 5 ? [...files.slice(0, 5), `... (${files.length - 5} more)`] : files;
+				p.note(
+					`${color.warning('The following files already exist in this directory:')}\n\n${displayFiles.join('\n')}`,
+					`Location: ${color.path(path.resolve(directory))}`,
+					{ format: (line) => line }
+				);
 
 				const force = await p.confirm({
 					message: 'Directory not empty. Continue?',

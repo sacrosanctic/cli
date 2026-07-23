@@ -1,5 +1,4 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
+import { exec } from 'tinyexec';
 import type { AddonDefinition, SetupResult, Verification } from './config.ts';
 import { UnsupportedError } from './errors.ts';
 
@@ -17,13 +16,13 @@ export function verifyCleanWorkingDirectory(cwd: string, gitCheck: boolean) {
 					// there are no pending changes. If the below command is run outside of a git repository,
 					// git will exit with a failing exit code, which will trigger the catch statement.
 					// also see https://remarkablemark.org/blog/2017/10/12/check-git-dirty/#git-status
-					const asyncExec = promisify(exec);
-					const { stdout } = await asyncExec('git status --short', {
-						cwd
+					const result = await exec('git', ['status', '--short'], {
+						nodeOptions: { cwd },
+						throwOnError: true
 					});
 
-					if (stdout) {
-						return { success: false, message: 'Uncommited changes found' };
+					if (result.stdout) {
+						return { success: false, message: result.stdout };
 					}
 
 					return { success: true, message: undefined };
