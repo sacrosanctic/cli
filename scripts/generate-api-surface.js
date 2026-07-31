@@ -8,7 +8,6 @@
  * Run: `node scripts/generate-api-surface.js` — or via root `postbuild` after `pnpm build`.
  * Output is formatted with Oxfmt using the repo root `oxfmt.config.ts` so it matches `pnpm format`.
  */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -109,7 +108,19 @@ function clean(source) {
 	result = stripJsDoc(result);
 	result = stripImportLines(result);
 	result = collapseBlankLines(result);
+	result = fixZimmerframeModuleDeclaration(result);
 	return result.trim() + '\n';
+}
+
+/**
+ * Fix `declare module 'zimmerframe'` -> `declare module index_d_exports`
+ * in generated .d.mts files. This makes Visitors/Context types accessible
+ * via Walker.Visitors when importing from sv-utils.
+ * @param {string} source
+ * @returns {string}
+ */
+function fixZimmerframeModuleDeclaration(source) {
+	return source.replace(/declare module 'zimmerframe'/g, 'declare namespace index_d_exports');
 }
 
 /**
@@ -225,9 +236,31 @@ export async function generateApiSurface() {
 	return generated;
 }
 
+/**
+ * Fix `declare module 'zimmerframe'` -> `declare module index_d_exports`
+ * in generated .d.mts files. This makes Visitors/Context types accessible
+ * via Walker.Visitors when importing from sv-utils.
+ */
+export function fixDtsModuleDeclarations() {
+	for (const pkg of packages) {
+		const dtsPath = path.resolve(ROOT, pkg.dts);
+		if (!fs.existsSync(dtsPath)) continue;
+
+		let content = fs.readFileSync(dtsPath, 'utf8');
+		const original = content;
+		content = fixZimmerframeModuleDeclaration(content);
+
+		if (content !== original) {
+			fs.writeFileSync(dtsPath, content, 'utf8');
+			console.log(`  fixed: ${pkg.dts}`);
+		}
+	}
+}
+
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 
 if (isMain) {
+	fixDtsModuleDeclarations();
 	generateApiSurface().catch((err) => {
 		console.error(err);
 		process.exit(1);
