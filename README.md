@@ -1,3 +1,7 @@
+one of 2 things happen to pm cmds
+they get run or they printed, we shold have a util for it
+https://github.com/mathisonian/command-exists/blob/master/lib/command-exists.js
+
 [![Chat](https://img.shields.io/discord/457912077277855764?label=chat&logo=discord)](https://svelte.dev/chat)
 
 # sv - the Svelte CLI

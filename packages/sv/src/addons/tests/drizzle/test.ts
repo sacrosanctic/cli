@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { commandExists } from 'sv/testing';
 import { beforeAll, expect } from 'vitest';
 import drizzle from '../../drizzle.ts';
 import { setupTest } from '../_setup/suite.ts';
@@ -41,12 +42,7 @@ beforeAll(() => {
 	if (!MUST_HAVE_DOCKER) return;
 	const cwd = path.dirname(fileURLToPath(import.meta.url));
 
-	try {
-		execSync('docker --version', { cwd, stdio: 'pipe' });
-		dockerInstalled = true;
-	} catch {
-		dockerInstalled = false;
-	}
+	dockerInstalled = commandExists('docker');
 
 	if (dockerInstalled) execSync('docker compose up --detach', { cwd, stdio: 'pipe' });
 
