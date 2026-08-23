@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import * as p from '@clack/prompts';
-import { color, loadPackageJson, resolveCommandArray } from '@sveltejs/sv-utils';
+import { color, resolveCommandArray } from '@sveltejs/sv-utils';
 import { Command, Option } from 'commander';
 import * as v from 'valibot';
 import * as common from '../core/common.ts';
@@ -16,13 +16,14 @@ import {
 	installOption,
 	packageManagerPrompt
 } from '../core/package-manager.ts';
-import { createWorkspace, type Workspace } from '../core/workspace.ts';
+import { createBootstrapWorkspace } from '../core/bootstrap.ts';
+import { prepareSvApi } from '../core/engine.ts';
 import {
 	type LanguageType,
 	type TemplateType,
-	create as createKit,
 	templates
 } from '../create/index.ts';
+import { scaffoldAddon } from '../create/addon.ts';
 import {
 	detectPlaygroundDependencies,
 	downloadPlaygroundData,
@@ -30,7 +31,6 @@ import {
 	setupPlaygroundProject,
 	validatePlaygroundUrl
 } from './playground.ts';
-import { dist } from '../create/utils.ts';
 import {
 	addonArgsHandler,
 	classifyAddons,
@@ -299,10 +299,11 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 	let answers: Record<string, OptionValues<any>> = {};
 	let addonsOptionsMap: Record<string, string[] | undefined> = {};
 
-	const workspace = await createVirtualWorkspace({
+	const workspace = await createBootstrapWorkspace({
 		cwd: projectPath,
 		template,
-		type: language
+		type: language,
+		name: projectName
 	});
 
 	if (template !== 'addon' && (options.addOns || options.add.length > 0)) {
@@ -334,12 +335,17 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 		answers = result.answers;
 	}
 
-	createKit({
-		cwd: projectPath,
-		name: projectName,
-		template,
-		types: language
-	});
+	// the scaffold add-on is an internal add-on that always runs first, before
+	// any user-selected add-on
+	{
+		const { sv } = prepareSvApi(workspace);
+		await scaffoldAddon.run({
+			...workspace,
+			options: { template, types: language, name: projectName },
+			sv,
+			cancel: () => {}
+		});
+	}
 
 	if (options.fromPlayground) {
 		await createProjectFromPlayground(options.fromPlayground, projectPath);
@@ -458,55 +464,4 @@ async function confirmExternalDependencies(dependencies: string[]): Promise<bool
 	}
 
 	return installDeps;
-}
-
-interface CreateVirtualWorkspaceOptions {
-	cwd: string;
-	template: TemplateType;
-	type: LanguageType;
-}
-
-export async function createVirtualWorkspace({
-	cwd,
-	template,
-	type
-}: CreateVirtualWorkspaceOptions): Promise<Workspace> {
-	const override: {
-		isKit?: boolean;
-		directory?: Workspace['directory'];
-		dependencies: Record<string, string>;
-	} = { dependencies: {} };
-
-	// These are our default project structure so we know that it's a kit project
-	if (template === 'minimal' || template === 'demo' || template === 'library') {
-		override.isKit = true;
-		override.directory = {
-			src: 'src',
-			lib: 'src/lib',
-			kitRoutes: 'src/routes'
-		};
-	}
-
-	// Let's read the package.json of the template we will use and add the dependencies to the override
-	const templatePackageJsonPath = dist(`templates/${template}`);
-	const { data: packageJson } = loadPackageJson(templatePackageJsonPath);
-	override.dependencies = {
-		...packageJson.devDependencies,
-		...packageJson.dependencies,
-		...override.dependencies
-	};
-
-	const tentativeWorkspace = await createWorkspace({ cwd, override });
-
-	const virtualWorkspace: Workspace = {
-		...tentativeWorkspace,
-		language: type === 'typescript' ? 'ts' : 'js',
-		file: {
-			...tentativeWorkspace.file,
-			viteConfig:
-				type === 'typescript' ? common.filePaths.viteConfigTS : common.filePaths.viteConfig
-		}
-	};
-
-	return virtualWorkspace;
 }
