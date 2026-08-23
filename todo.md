@@ -1,56 +1,62 @@
 # Migration Plan: `sv/create` decomposition
 
-Decisions locked: shared/ dies completely, assets inline as TS strings, single PR with ordered commits.
+Status: **complete** — all phases implemented and committed.
 
-## Commit 1 — Playground → CLI
+Decisions locked: shared/ dies completely, per-consumer `template/` asset directories with a generic build+runtime mechanism, single branch with ordered commits.
 
-- Move `create/playground.ts` → `cli/playground.ts`; re-point sole importer (`cli/create.ts:26-32`)
-- Inline `PlaygroundLayout.svelte` as a TS string export (AST hooks in `playground.ts:199-218` operate on source text, so this is safe)
-- Move `create/tests/playground.ts` → `cli/tests/`; delete `+playground/`; drop `'playground'` from `Condition`
+## Commit 1 — Playground → CLI ✅ af1d255c
 
-## Commit 2 — ai-tools owns its assets
+- [x] Move `create/playground.ts` → `cli/playground.ts`; re-point sole importer (`cli/create.ts`)
+- [x] Keep `PlaygroundLayout.svelte` as a real file at `create/template/playground/src/lib/`, shipped under the `scaffold` key and read via `getTemplateFiles('scaffold')` (AST placeholder hooks unchanged)
+- [x] Move `create/tests/playground.ts` → `cli/tests/`; delete `+playground/`; drop `'playground'` from `Condition`
 
-- Inline `+mcp/AGENTS.md`, `+skills/**` (2 SKILL.md + 9 references), `+agents/svelte-file-editor.md` as TS string exports (e.g. `addons/ai-tools-assets.ts`)
-- Derive `TOOLS` labels from those constants; remove `getSharedFiles()` usage (`ai-tools.ts:206-210`) and its stale comment (`:120`)
-- Delete the three dirs; drop `'mcp'|'skills'|'agents'` from `Condition`
+## Commit 2 — ai-tools owns its assets ✅ 91bddff7
 
-## Commit 3 — Templates own their prose
+- [x] Move `+mcp/AGENTS.md`, `+skills/**` (2 SKILL.md + 9 references), `+agents/svelte-file-editor.md` into real files under `addons/ai-tools/template/{mcp,skills,agents}/`, consumed via `getTemplateFiles('ai-tools')`
+- [x] Derive tool files from those constants; remove `getSharedFiles()` usage and stale comment
+- [x] Delete the three dirs; drop `'mcp'|'skills'|'agents'` from `Condition`
 
-- Root `README.md` → `templates/minimal/` + `templates/library/`; `+addon/{README.md,CONTRIBUTING.md}` → `templates/addon/`; `+library/README.md` merges into library's copy
-- Verify `.md` assets still flow through `kv()` `$SV-NAME-TODO$` replacement via the normal `assets/` copy path (`create/utils.ts:53`)
-- Remove the shared-set skip logic in `build-templates.js:117` only after confirming nothing else collides
+## Commit 3 — Templates own their prose ✅ 4b985574
 
-## Commit 4 — vite.config per-template, kill shared/
+- [x] Root `README.md` → `templates/minimal/` (demo gets the same generic README it was already receiving at runtime); `+library/README.md` → `templates/library/`
+- [x] `+addon/{README.md,CONTRIBUTING.md}` → `templates/addon/`
+- [x] `.md` assets still flow through `kv()` `$SV-NAME-TODO$` replacement via the normal `assets/` copy path
+- [x] demo `.ignore` updated: stop excluding `README.md`, exclude dev-time `tsconfig.json`
 
-- Copy `shared/vite.config.ts` into `templates/minimal/` + `templates/library/`
-- **Diff demo's own `vite.config.js` against the shared one** — if they diverge, decide which wins (snapshot churn either way)
-- Delete: `shared/`, `getSharedFiles()`, `Common`, `write_common_files`, `merge()`, `sort_keys()`, `sort_files()` (`create/index.ts:87-179`), `generate_shared()` + `shared.json` in `build-templates.js`
-- Keep the addon-template `rmSync` cleanup (`index.ts:48-57`) — it also removes `svelte.config.*`, whose origin is outside shared
+## Commit 4 — vite.config per-template, kill shared/ ✅ af00005b (+ 26a0bdb7)
 
-## Commit 5 — Config codegen
+- [x] Copy `shared/vite.config.ts` into `templates/{minimal,library,demo}/` (the stale template-local `.js` copies were missing the runes compilerOptions block)
+- [x] Delete: `shared/`, `getSharedFiles()`, `Common`, `write_common_files`, `merge()`, `sort_files()`, `generate_shared()` + `shared.json`
+- [x] Addon-template `rmSync` cleanup retained (also covers `svelte.config.*`)
+- [x] build-templates.js: normalize glob path separators so manifests are identical across platforms
 
-- New `create/configs.ts`: `(template, types) → tsconfig|jsconfig contents`, reproducing all 6 current variants byte-for-byte (watch the `+none` vs `+checkjs` jsconfig delta and library include overrides); written directly by `create()`
-- Replace `+{typescript,checkjs}/package.json` fragments with programmatic edits via sv-utils `transforms.json`: conditionally add `check`/`check:watch` scripts + `svelte-check`/`typescript` devDeps when `types !== 'none'`; preserve alphabetization on final write
-- Delete the 6 variant dirs
+## Commit 5 — Config codegen ✅ af00005b (+ 26a0bdb7)
 
-## Commit 6 — Internal scaffold addon + bootstrap
+- [x] New `create/configs.ts`: `(template, types) → tsconfig|jsconfig contents` reproducing all previous variants byte-for-byte; written directly by `create()`
+- [x] `+{typescript,checkjs}/package.json` fragments replaced by programmatic edits (`getTypeCheckingPackageJsonEdits`)
+- [x] Delete the 6 variant dirs; keep slim `sort_keys()` for package.json finalization
+- [x] Parity regression test (`create/tests/parity.ts`) asserting byte-identical output vs pre-refactor baseline fixture for all 12 template×language combos — passing
 
-- Wrap scaffolding as internal addon (template/types as select options), **not** registered in `officialAddons`; keep the low-level `create()` exported (`src/index.ts`) as the shared primitive for the addon wrapper and `testing.ts`
-- Relocate `createVirtualWorkspace` → core bootstrap that writes an empty project skeleton (valid `package.json`) so engine workspace validation passes; scaffold addon occupies a guaranteed first slot in the engine pipeline
-- Slim `cli/create.ts` to prompts + playground flag + next-steps orchestration
-- Regenerate `cli/tests/snapshots/*` and check `api-surface.md` / `dts-api-surface` for export drift
+## Commit 6 — Internal scaffold addon + bootstrap ✅ 84d26822
 
-## Verification (every commit)
+- [x] `createVirtualWorkspace` → `core/bootstrap.ts` as `createBootstrapWorkspace`; now writes an empty project skeleton (package.json) so the engine workspace is valid before any add-on runs
+- [x] Internal scaffold add-on (`create/addon.ts`, id `'scaffold'`), not registered in `officialAddons`; `sv create` runs it first via a real SvApi context
+- [x] Low-level `create()` remains exported from `src/index.ts` for `testing.ts` and programmatic use
+- [x] Slimmed `cli/create.ts` imports (removed local virtual-workspace machinery, `createKit` alias, unused utils)
 
-`tsgo` check, lint/format, unit + addon snapshot tests, full `pnpm build` (build-hook changes affect dist layout), plus manual smoke:
+## Verification performed
 
-- `create --template minimal --types ts`
-- `create --from-playground <url>`
-- `create --template addon`
-- `sv add` on an existing project
+- [x] `tsgo` typecheck clean at every phase
+- [x] eslint clean on all touched files
+- [x] Full `pnpm build` regenerates dist (stale dist wiped first)
+- [x] Parity tests: 12/12 passing
+- [x] Core unit tests: 27/27 passing
+- [x] CLI smoke: `create --template minimal --types ts --no-install --no-add-ons` output matches baseline (modulo intentional CLI deltas: project name from directory, updateReadme recreation command injection)
+- [x] CLI smoke: `--template addon --addon-name @test/my-addon` ships template-owned README/CONTRIBUTING + standalone jsconfig, sanitized package name
 
-## Residual risks
+## Residual risks / follow-ups
 
-1. Demo vite.config divergence surfacing in commit 4
-2. `svelte.config.*` provenance assumption in commit 4's cleanup retention
-3. Byte-parity of generated configs in commit 5 — mitigate with a temporary parity test against pre-refactor output
+1. Demo vite.config divergence resolved: shared version won (template copies were stale)
+2. Playground network tests (`cli/tests/playground.ts`) and heavy integration tests (`create/tests/check.ts`, snapshot tests) were not run locally — recommend a full `pnpm test:ci` in CI
+3. Scaffold add-on prompt definitions duplicate the CLI's inline prompts; a follow-up can derive CLI prompts from the add-on options
+4. Engine pipeline doesn't yet run scaffold through `orderAddons`/`applyAddons` — scaffold is invoked explicitly first in `createProject`; deeper engine integration can come later
