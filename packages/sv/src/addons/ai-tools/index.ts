@@ -3,7 +3,7 @@ import path from 'node:path';
 import { log } from '@clack/prompts';
 import { color, transforms } from '@sveltejs/sv-utils';
 import { defineAddon, defineAddonOptions } from '../../core/config.ts';
-import { getSharedFiles } from '../../create/utils.ts';
+import { getTemplateFiles } from '../../core/templates.ts';
 
 const REGEX_MD = /\.md$/;
 
@@ -117,7 +117,7 @@ const wantsLooseTools = (client: Client | undefined, delivery: string | undefine
 const wantsMcpConfig = (client: Client | undefined, delivery: string | undefined) =>
 	Boolean(client?.mcpOptions) && wantsLooseTools(client, delivery);
 
-// Static for curated labels; derive from getSharedFiles() (include 'skills'/'agents') to go dynamic.
+// Static for curated labels; ids mirror the files under ai-tools/template/.
 const TOOLS: Record<string, { label: string; kind: 'mcp' | 'skill' | 'agent'; hint?: string }> = {
 	mcp: { label: 'MCP server', kind: 'mcp' },
 	'svelte-code-writer': { label: 'svelte-code-writer', kind: 'skill', hint: 'skill' },
@@ -203,11 +203,8 @@ export default defineAddon({
 		const filesAdded: string[] = [];
 		const filesExistingAlready: string[] = [];
 
-		const sharedFiles = getSharedFiles();
-		const mcpFiles = sharedFiles.filter((file) => file.include.includes('mcp'));
-		const skillFiles = sharedFiles.filter((file) => file.include.includes('skills'));
-		const agentFiles = sharedFiles.filter((file) => file.include.includes('agents'));
-		const agentFile = mcpFiles.find((file) => file.name === 'AGENTS.md');
+		const templateFiles = getTemplateFiles('ai-tools');
+		const agentFile = templateFiles.find((file) => file.path === 'mcp/AGENTS.md')?.contents;
 
 		const addFile = (path: string, contents: string) => {
 			sv.file(path, (content) => {
@@ -265,7 +262,7 @@ export default defineAddon({
 						return false;
 					}
 					filesAdded.push(agentPath);
-					return agentFile?.contents ?? '';
+					return agentFile ?? '';
 				});
 			}
 
@@ -312,18 +309,21 @@ export default defineAddon({
 			}
 
 			if (skillsPath) {
-				for (const file of skillFiles) {
-					if (!selectedSkills.includes(file.name.split('/')[0])) continue;
-					addFile(`${skillsPath}/${file.name}`, file.contents);
+				for (const id of selectedSkills) {
+					for (const file of templateFiles.filter((f) =>
+						f.path.startsWith(`skills/${id}/`)
+					)) {
+						addFile(`${skillsPath}/${file.path.slice('skills/'.length)}`, file.contents);
+					}
 				}
 			}
 
 			if (agentsPath) {
-				for (const file of agentFiles) {
-					if (!selectedAgents.includes(file.name.replace(REGEX_MD, ''))) continue;
-					const ext = agentExtension ?? '.md';
-					const name = file.name.replace(REGEX_MD, ext);
-					addFile(`${agentsPath}/${name}`, file.contents);
+				const ext = agentExtension ?? '.md';
+				for (const id of selectedAgents) {
+					const file = templateFiles.find((f) => f.path === `agents/${id}.md`);
+					if (!file) continue;
+					addFile(`${agentsPath}/${id}${ext}`, file.contents);
 				}
 			}
 		}
