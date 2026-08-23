@@ -6,4 +6,4 @@ vercel.json
 .cloudflare
 .netlify
 .turbo
-README.md
+tsconfig.json

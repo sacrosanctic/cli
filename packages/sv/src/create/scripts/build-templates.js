@@ -51,9 +51,8 @@ function strip_jsdoc(content) {
 
 /**
  * @param {string} dist
- * @param {Set<string>} shared
  */
-async function generate_templates(dist, shared) {
+async function generate_templates(dist) {
 	const templates = fs.readdirSync(path.resolve(pkgRoot, 'templates'));
 
 	for (const template of templates) {
@@ -86,7 +85,10 @@ async function generate_templates(dist, shared) {
 			none: []
 		};
 
-		const files = glob('**/*', { cwd, filesOnly: true, dot: true });
+		// normalize to forward slashes so generated manifests are identical across platforms
+		const files = glob('**/*', { cwd, filesOnly: true, dot: true }).map((name) =>
+			name.replaceAll('\\', '/')
+		);
 		for (const name of files) {
 			// the package.template.json thing is a bit annoying — basically we want
 			// to be able to develop and deploy the app from here, but have a different
@@ -112,9 +114,6 @@ async function generate_templates(dist, shared) {
 				fs.writeFileSync(path.join(dir, 'package.json'), contents);
 				continue;
 			}
-
-			// ignore files that are written conditionally
-			if (shared.has(name)) continue;
 
 			// ignore contents of .gitignore or .ignore
 			if (!gitignore.accepts(name) || !ignore.accepts(name) || name === '.ignore') continue;
@@ -238,91 +237,6 @@ async function replace_async(string, regexp, replacer) {
 	return string.replace(regexp, () => replacements[i++]);
 }
 
-/**
- * @param {string} dist
- */
-async function generate_shared(dist) {
-	const cwd = path.resolve(pkgRoot, 'shared');
-
-	/** @type {Set<string>} */
-	const shared = new Set();
-
-	/** @type {Array<{ name: string, include: string[], exclude: string[], contents: string }>} */
-	const files = [];
-
-	const globbed = glob('**/*', { cwd, filesOnly: true, dot: true });
-	for (const file of globbed) {
-		const contents = fs.readFileSync(path.join(cwd, file), 'utf8');
-
-		/** @type {string[]} */
-		const include = [];
-
-		/** @type {string[]} */
-		const exclude = [];
-
-		let name = file;
-
-		if (file.startsWith('+') || file.startsWith('-')) {
-			const [conditions, ...rest] = file.split(path.sep);
-
-			const pattern = /([+-])([a-z0-9]+)/g;
-			let match;
-			// @ts-ignore
-			while ((match = pattern.exec(conditions))) {
-				const set = match[1] === '+' ? include : exclude;
-				// @ts-ignore
-				set.push(match[2]);
-			}
-
-			name = rest.join('/');
-		}
-
-		if (name.endsWith('.ts') && !include.includes('typescript')) {
-			// file includes types in TypeScript and JSDoc —
-			// create .js file, with and without JSDoc
-			const js = await convert_typescript(contents);
-			const js_name = name.replace(/\.ts$/, '.js');
-
-			// typescript
-			files.push({
-				name,
-				include: [...include, 'typescript'],
-				exclude,
-				contents: strip_jsdoc(contents)
-			});
-
-			// checkjs
-			files.push({
-				name: js_name,
-				include: [...include, 'checkjs'],
-				exclude,
-				contents: js
-			});
-
-			// no typechecking
-			files.push({
-				name: js_name,
-				include,
-				exclude: [...exclude, 'typescript', 'checkjs'],
-				contents: strip_jsdoc(js)
-			});
-
-			shared.add(name);
-			shared.add(js_name);
-		} else {
-			shared.add(name);
-			files.push({ name, include, exclude, contents });
-		}
-	}
-
-	files.sort((a, b) => a.include.length + a.exclude.length - (b.include.length + b.exclude.length));
-
-	fs.writeFileSync(path.join(dist, 'shared.json'), JSON.stringify({ files }, null, '\t'));
-
-	shared.delete('package.json');
-	return shared;
-}
-
 /** @param {string} dir */
 export function mkdirp(dir) {
 	try {
@@ -358,7 +272,10 @@ function generate_vite_template(dist) {
 
 	for (const { src, lang } of variants) {
 		const srcDir = path.join(createVitePath, src);
-		const files = glob('**/*', { cwd: srcDir, filesOnly: true, dot: true });
+		// normalize to forward slashes so generated manifests are identical across platforms
+		const files = glob('**/*', { cwd: srcDir, filesOnly: true, dot: true }).map((name) =>
+			name.replaceAll('\\', '/')
+		);
 
 		for (const name of files) {
 			const srcPath = path.join(srcDir, name);
@@ -419,8 +336,7 @@ function generate_vite_template(dist) {
 export async function buildTemplates(dist) {
 	mkdirp(dist);
 
-	const shared = await generate_shared(dist);
-	await generate_templates(dist, shared);
+	await generate_templates(dist);
 	generate_vite_template(dist);
 }
 
