@@ -12,7 +12,7 @@ import {
 	Walker
 } from '@sveltejs/sv-utils';
 import { filePaths } from '../core/common.ts';
-import { getSharedFiles } from './utils.ts';
+import { getTemplateFiles } from '../core/templates.ts';
 
 export function validatePlaygroundUrl(link: string): boolean {
 	try {
@@ -191,34 +191,27 @@ export function setupPlaygroundProject(
 
 	// add playground shared files
 	{
-		const playgroundFiles = getSharedFiles().filter((file) => file.include.includes('playground'));
-
-		for (const file of playgroundFiles) {
-			let contentToWrite = file.contents;
-
-			if (file.name === 'src/lib/PlaygroundLayout.svelte') {
-				// getting raw content
-				const { ast, generateCode } = parse.svelte(file.contents);
-				// change title and url placeholders
-				svelte.ensureScript(ast);
-				// tsgo can't infer visitor node types from zimmerframe's distributive conditional
-				Walker.walk(ast.instance.content as AstTypes.Node, null, {
-					Literal(node: AstTypes.Literal) {
-						if (node.value === '$sv-title-$sv') {
-							node.value = playground.name;
-							node.raw = undefined;
-						} else if (node.value === '$sv-url-$sv') {
-							node.value = url;
-							node.raw = undefined;
-						}
-					}
-				});
-
-				contentToWrite = generateCode();
+		const layoutSource = getTemplateFiles('scaffold').find(
+			(file) => file.path === 'playground/src/lib/PlaygroundLayout.svelte'
+		)!.contents;
+		const { ast, generateCode } = parse.svelte(layoutSource);
+		svelte.ensureScript(ast);
+		// replace title and url placeholders
+		Walker.walk(ast.instance.content as AstTypes.Node, null, {
+			Literal(node: AstTypes.Literal) {
+				if (node.value === '$sv-title-$sv') {
+					node.value = playground.name;
+					node.raw = undefined;
+				} else if (node.value === '$sv-url-$sv') {
+					node.value = url;
+					node.raw = undefined;
+				}
 			}
+		});
 
-			fs.writeFileSync(path.join(cwd, file.name), contentToWrite, 'utf-8');
-		}
+		const layoutPath = path.join(cwd, 'src', 'lib', 'PlaygroundLayout.svelte');
+		fs.mkdirSync(path.dirname(layoutPath), { recursive: true });
+		fs.writeFileSync(layoutPath, generateCode(), 'utf-8');
 	}
 
 	// add app import to +page.svelte

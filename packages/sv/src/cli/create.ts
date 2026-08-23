@@ -29,7 +29,7 @@ import {
 	parsePlaygroundUrl,
 	setupPlaygroundProject,
 	validatePlaygroundUrl
-} from '../create/playground.ts';
+} from './playground.ts';
 import { dist } from '../create/utils.ts';
 import {
 	addonArgsHandler,
