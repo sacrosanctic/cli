@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from 'vitest';
-import sveltekitAdapter from '../../sveltekit-adapter.ts';
+import sveltekitAdapter from '../../sveltekit-adapter/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const addonId = sveltekitAdapter.id;

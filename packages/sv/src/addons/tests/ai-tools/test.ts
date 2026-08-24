@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect } from 'vitest';
-import aiTools from '../../ai-tools.ts';
+import aiTools from '../../ai-tools/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const { test, testCases } = setupTest(

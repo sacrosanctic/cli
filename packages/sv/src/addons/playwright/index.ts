@@ -1,7 +1,7 @@
 import { log } from '@clack/prompts';
 import { color, dedent, resolveCommandArray, transforms } from '@sveltejs/sv-utils';
-import { defineAddon } from '../core/config.ts';
-import { addToDemoPage } from './common.ts';
+import { defineAddon } from '../../core/config.ts';
+import { addToDemoPage } from '../common.ts';
 
 export default defineAddon({
 	id: 'playwright',

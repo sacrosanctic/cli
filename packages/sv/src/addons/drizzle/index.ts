@@ -13,9 +13,9 @@ import {
 	defineEnv,
 	isKit3
 } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
-import type { OptionValues } from '../core/options.ts';
-import { getNodeTypesVersion } from './common.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
+import type { OptionValues } from '../../core/options.ts';
+import { getNodeTypesVersion } from '../common.ts';
 
 type Database = 'mysql' | 'postgresql' | 'sqlite' | 'd1';
 const PORTS: Record<Database, string> = {

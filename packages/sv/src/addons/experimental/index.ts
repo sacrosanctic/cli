@@ -1,5 +1,5 @@
 import { svelteConfig } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
 
 // Single source of truth, keyed by flag name. `path` defaults to `experimental.<name>` and `off`
 // opts out of the default selection.

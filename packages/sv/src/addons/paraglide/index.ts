@@ -8,8 +8,8 @@ import {
 	type SvelteAst,
 	transforms
 } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
-import { addToDemoPage } from './common.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
+import { addToDemoPage } from '../common.ts';
 
 const DEFAULT_INLANG_PROJECT = {
 	$schema: 'https://inlang.com/schema/project-settings',

@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import eslint from '../../eslint.ts';
+import eslint from '../../eslint/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const { test, testCases } = setupTest(

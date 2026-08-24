@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import tailwindcss from '../../tailwindcss.ts';
+import tailwindcss from '../../tailwindcss/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 import { addFixture } from './fixtures.ts';
 

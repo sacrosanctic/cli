@@ -1,7 +1,7 @@
 import { log } from '@clack/prompts';
 import { type AstTypes, svelteConfig, transforms } from '@sveltejs/sv-utils';
-import { defineAddon } from '../core/config.ts';
-import { addEslintConfigPrettier, ESLINT_VERSION, getNodeTypesVersion } from './common.ts';
+import { defineAddon } from '../../core/config.ts';
+import { addEslintConfigPrettier, ESLINT_VERSION, getNodeTypesVersion } from '../common.ts';
 
 export default defineAddon({
 	id: 'eslint',

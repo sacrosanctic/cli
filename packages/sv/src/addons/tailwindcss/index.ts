@@ -1,6 +1,6 @@
 import { transforms } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
-import { addPrettierTailwind, prettierConfigPath } from './common.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
+import { addPrettierTailwind, prettierConfigPath } from '../common.ts';
 
 const plugins = [
 	{

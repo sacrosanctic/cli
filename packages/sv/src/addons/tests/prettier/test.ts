@@ -4,7 +4,7 @@ import path from 'node:path';
 import { log } from '@clack/prompts';
 import { vi } from 'vitest';
 import { ESLINT_VERSION } from '../../common.ts';
-import prettier from '../../prettier.ts';
+import prettier from '../../prettier/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const origLogWarn = log.warn;

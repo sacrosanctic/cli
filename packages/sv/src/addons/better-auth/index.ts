@@ -13,8 +13,8 @@ import {
 	coerceVersion,
 	defineEnv
 } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
-import { addToDemoPage } from './common.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
+import { addToDemoPage } from '../common.ts';
 
 type Dialect = 'mysql' | 'postgresql' | 'sqlite' | 'turso';
 

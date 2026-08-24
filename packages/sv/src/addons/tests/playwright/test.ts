@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import playwright from '../../playwright.ts';
+import playwright from '../../playwright/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const { test, testCases } = setupTest(

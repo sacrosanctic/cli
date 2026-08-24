@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, expect } from 'vitest';
-import drizzle from '../../drizzle.ts';
+import drizzle from '../../drizzle/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 import { pageServer, pageComp } from './fixtures.ts';
 

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect } from '@playwright/test';
 import { transforms } from '@sveltejs/sv-utils';
-import mdsvex from '../../mdsvex.ts';
+import mdsvex from '../../mdsvex/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 import { svxFile } from './fixtures.ts';
 

@@ -1,17 +1,17 @@
 import type { Addon, AddonDefinition } from '../core/config.ts';
-import aiTools from './ai-tools.ts';
-import betterAuth from './better-auth.ts';
-import drizzle from './drizzle.ts';
-import eslint from './eslint.ts';
-import experimental from './experimental.ts';
-import mdsvex from './mdsvex.ts';
-import paraglide from './paraglide.ts';
-import playwright from './playwright.ts';
-import prettier from './prettier.ts';
-import storybook from './storybook.ts';
-import sveltekitAdapter from './sveltekit-adapter.ts';
-import tailwindcss from './tailwindcss.ts';
-import vitest from './vitest-addon.ts';
+import aiTools from './ai-tools/index.ts';
+import betterAuth from './better-auth/index.ts';
+import drizzle from './drizzle/index.ts';
+import eslint from './eslint/index.ts';
+import experimental from './experimental/index.ts';
+import mdsvex from './mdsvex/index.ts';
+import paraglide from './paraglide/index.ts';
+import playwright from './playwright/index.ts';
+import prettier from './prettier/index.ts';
+import storybook from './storybook/index.ts';
+import sveltekitAdapter from './sveltekit-adapter/index.ts';
+import tailwindcss from './tailwindcss/index.ts';
+import vitest from './vitest/index.ts';
 
 type OfficialAddons = {
 	prettier: Addon<any>;

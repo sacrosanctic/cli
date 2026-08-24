@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from 'vitest';
-import experimental from '../../experimental.ts';
+import experimental from '../../experimental/index.ts';
 import { setupTest } from '../_setup/suite.ts';
 
 const addonId = experimental.id;

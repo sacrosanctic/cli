@@ -8,7 +8,7 @@ import {
 	pnpm,
 	svelteConfig
 } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
 
 const adapters = [
 	{ id: 'auto', package: '@sveltejs/adapter-auto', version: '^8.0.0-next.3' },

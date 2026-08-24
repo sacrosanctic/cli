@@ -1,5 +1,5 @@
 import { coerceVersion, color, createPrinter, dedent, transforms } from '@sveltejs/sv-utils';
-import { defineAddon, defineAddonOptions } from '../core/config.ts';
+import { defineAddon, defineAddonOptions } from '../../core/config.ts';
 
 const options = defineAddonOptions()
 	.add('usages', {
