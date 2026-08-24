@@ -1,3 +1,4 @@
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
@@ -158,10 +159,33 @@ export default defineConfig([
 	}
 ]);
 
+/**
+ * Copies every add-on's conventional `template/` directory to
+ * `<dist>/addon-templates/<add-on id>/`, preserving its structure. The
+ * internal scaffold add-on keeps its assets at `create/template`.
+ */
+export function copyAddonTemplates(distRoot: string) {
+	const addons = path.resolve('packages/sv/src/addons');
+	const sources: Array<{ key: string; dir: string }> = existsSync(addons)
+		? readdirSync(addons).map((entry) => ({
+				key: entry,
+				dir: path.join(addons, entry, 'template')
+			}))
+		: [];
+	sources.push({ key: 'scaffold', dir: path.resolve('packages/sv/src/create/template') });
+
+	for (const { key, dir } of sources) {
+		if (!existsSync(dir) || !statSync(dir).isDirectory()) continue;
+		cpSync(dir, path.resolve(distRoot, 'addon-templates', key), { recursive: true });
+	}
+}
+
 export async function buildCliTemplates() {
 	const start = performance.now();
 	await buildTemplates(path.resolve('packages/sv/dist'));
 	await buildTemplates(path.resolve('packages/sv/src/create/dist'));
+	copyAddonTemplates(path.resolve('packages/sv/dist'));
+	copyAddonTemplates(path.resolve('packages/sv/src/create/dist'));
 	const [green, reset] = ['\x1b[32m', '\x1b[0m'];
 	console.log(`${green}✔${reset} Templates built in ${Math.round(performance.now() - start)}ms`);
 }
