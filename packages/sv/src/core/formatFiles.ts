@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as p from '@clack/prompts';
 import { type AgentName, loadPackageJson, resolveCommand } from '@sveltejs/sv-utils';
+import * as walk from 'empathic/walk';
 import { exec } from 'tinyexec';
 import { detectPackageManager } from './package-manager.ts';
 import { findWorkspaceRoot } from './workspace.ts';
@@ -50,16 +51,12 @@ export async function formatFiles(options: {
 /** Nearest dir from `cwd` up to the workspace root with a `format` or `fmt` package.json script. */
 function findFormatScript(cwd: string): { dir: string; name: 'format' | 'fmt' } | undefined {
 	const workspaceRoot = findWorkspaceRoot(cwd);
-	let directory = path.resolve(cwd);
-	const { root } = path.parse(directory);
-	while (directory && directory.length >= workspaceRoot.length) {
+	for (const directory of walk.up(path.resolve(cwd), { last: workspaceRoot })) {
 		if (fs.existsSync(path.join(directory, 'package.json'))) {
 			const { data } = loadPackageJson(directory);
 			if (data.scripts?.format) return { dir: directory, name: 'format' };
 			if (data.scripts?.fmt) return { dir: directory, name: 'fmt' };
 		}
-		if (directory === root) break;
-		directory = path.dirname(directory);
 	}
 	return undefined;
 }
