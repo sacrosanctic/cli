@@ -15,16 +15,9 @@ Please keep your pull requests focused to feature or issue. Focused smaller chan
 
 ## Preparing
 
-This is a monorepo, meaning the repo holds multiple packages. It requires the use of [pnpm](https://pnpm.io/). You can [install pnpm](https://pnpm.io/installation) with:
+This project is a monorepo and requires [pnpm](https://pnpm.io/installation) and [docker](https://docs.docker.com/get-started/get-docker). Linux users, you will have to ensure 'sudo' is not required. See [docker post install](https://docs.docker.com/engine/install/linux-postinstall/)
 
-```sh
-npm i -g pnpm
-```
-
-_(Optional)_ For running certain packages and tests locally you will need to install [docker](https://docs.docker.com/get-started/get-docker).
-Linux users, you will have to ensure 'sudo' is not required. See [docker post install](https://docs.docker.com/engine/install/linux-postinstall/)
-
-`pnpm` commands run in the project's root directory will run on all sub-projects. You can checkout the code and install the dependencies with:
+Checkout the code and install the dependencies with:
 
 ```sh
 git clone https://github.com/sveltejs/cli.git
@@ -76,8 +69,9 @@ pnpm build && pnpm test --project cli  # CLI tests
 
 Run with vitest ui for interactive debugging:
 
-```sh
-pnpm test:ui --project cli
+```diff
+-pnpm test --project cli
++pnpm test:ui --project cli
 ```
 
 Run all tests (slow, typically for CI):
@@ -122,36 +116,18 @@ pnpm build && pnpm test:ui --project cli
 
 ### Coding style
 
-There are a few guidelines we follow:
+Ensure the following passes as it is part of the CI:
 
-- Ensure `pnpm lint` and `pnpm check` pass. You can run `pnpm format` to format the code
-- linting
+- `pnpm lint`
+- `pnpm check`
 
-```sh
-# from root of project
-pnpm lint
-```
-
-- formatting
-
-```sh
-# from root of project
-pnpm format
-```
-
-- type checking
-
-```sh
-# from root of project
-pnpm check
-```
+`pnpm format` to format the code.
 
 ## svelte-migrate
 
 To run svelte-migrate locally:
 
 ```sh
-# from root of project
 node ./packages/migrate/bin.js
 ```
 
