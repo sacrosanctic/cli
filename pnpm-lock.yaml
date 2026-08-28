@@ -134,6 +134,9 @@ importers:
       smol-toml:
         specifier: ^1.6.1
         version: 1.6.1
+      sucrase:
+        specifier: ^3.35.0
+        version: 3.35.1
       svelte:
         specifier: ^5.56.9
         version: 5.56.9(@typescript-eslint/types@8.67.0)
