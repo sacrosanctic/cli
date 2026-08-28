@@ -48,3 +48,11 @@ export {
 
 // Terminal styling
 export { color } from './color.ts';
+
+// Types
+export type { Comments, AstTypes, SvelteAst } from './tooling/index.ts';
+export type { TransformFn } from './tooling/transforms.ts';
+export type { YamlDocument } from './tooling/parsers.ts';
+
+// Type conversion
+export { convert_typescript, strip_jsdoc } from './types.ts';

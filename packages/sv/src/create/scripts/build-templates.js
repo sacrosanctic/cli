@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { convert_typescript, strip_jsdoc } from '@sveltejs/sv-utils';
 import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
@@ -12,40 +13,6 @@ import oxfmtConfig from '../../../../../oxfmt.config.ts';
 const pkgRoot = path.resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
 const createVitePath = path.dirname(require.resolve('create-vite/package.json'));
-
-/** @param {string} content */
-async function convert_typescript(content) {
-	let { code } = transform(content, {
-		transforms: ['typescript'],
-		disableESTransforms: true
-	});
-
-	// sucrase leaves invalid class fields intact
-	code = code.replace(/^\s*[a-z]+;$/gm, '');
-
-	// Replace "local import" that ends with ".ts" to ".js"
-	code = code.replace(/import (.+?) from ['"](.+?)\.ts['"]/g, 'import $1 from "$2.js"');
-
-	const result = await format('file.js', code, oxfmtConfig);
-
-	return result.code;
-}
-
-/** @param {string} content */
-function strip_jsdoc(content) {
-	return content
-		.replace(/ \/\*\*\*\//g, '')
-		.replace(
-			/\/\*\*([\s\S]+?)(@[\s\S]+?)?\*\/([\s\n]+)/g,
-			(match, description, tags, whitespace) => {
-				if (/^\s+(\*\s*)?$/.test(description)) {
-					return '';
-				}
-
-				return `/**${description.replace(/\* $/, '')}*/${whitespace}`;
-			}
-		);
-}
 
 /**
  * @param {string} dist
@@ -128,7 +95,8 @@ async function generate_templates(dist, shared) {
 					if (name.endsWith('app.d.ts')) types.checkjs.push({ name, contents });
 					types.typescript.push({ name, contents });
 				} else if (name.endsWith('.ts')) {
-					const js = await convert_typescript(contents);
+					const code = await convert_typescript(contents);
+					const { code: js } = await format('file.js', code, oxfmtConfig);
 
 					types.typescript.push({
 						name,
@@ -286,7 +254,9 @@ async function generate_shared(dist) {
 		if (name.endsWith('.ts') && !include.includes('typescript')) {
 			// file includes types in TypeScript and JSDoc —
 			// create .js file, with and without JSDoc
-			const js = await convert_typescript(contents);
+			const code = await convert_typescript(contents);
+			const { code: js } = await format('file.js', code, oxfmtConfig);
+
 			const js_name = name.replace(/\.ts$/, '.js');
 
 			// typescript
