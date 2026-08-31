@@ -13,4 +13,4 @@ const TEMPLATES_DIR = path.resolve(
 	'minimal'
 );
 
-generate_templates(TEMPLATES_DIR, 'dist/template');
+generate_templates(TEMPLATES_DIR, path.join(SV_ROOT, 'dist', 'template'));

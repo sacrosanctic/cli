@@ -34,9 +34,7 @@ function strip_jsdoc(content: string): string {
 /**
  * Generates template JSON files for the minimal template
  */
-export function generate_templates(cwd: string, dist: string): void {
-	const outputPath = path.join(dist, 'template');
-
+export function generate_templates(templatePath: string, outputPath: string): void {
 	try {
 		fs.mkdirSync(outputPath, { recursive: true });
 	} catch (e) {
@@ -50,10 +48,10 @@ export function generate_templates(cwd: string, dist: string): void {
 		none: []
 	};
 
-	const files = glob('**/*', { cwd, filesOnly: true, dot: true });
+	const files = glob('**/*', { cwd: templatePath, filesOnly: true, dot: true });
 	for (const name of files) {
 		if (name.endsWith('.d.ts')) {
-			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			const contents = fs.readFileSync(path.join(templatePath, name), 'utf8');
 			if (name.endsWith('app.d.ts')) {
 				types.checkjs.push({ name, contents });
 			}
@@ -62,7 +60,7 @@ export function generate_templates(cwd: string, dist: string): void {
 		}
 
 		if (name.endsWith('.ts')) {
-			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			const contents = fs.readFileSync(path.join(templatePath, name), 'utf8');
 			const js = strip_typescript(contents);
 
 			types.typescript.push({
@@ -83,7 +81,7 @@ export function generate_templates(cwd: string, dist: string): void {
 		}
 
 		if (name.endsWith('.svelte')) {
-			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			const contents = fs.readFileSync(path.join(templatePath, name), 'utf8');
 			const js_contents = contents.replace(
 				/<script([^>]+)>([\s\S]+?)<\/script>/g,
 				(match, attrs, typescript) => {
