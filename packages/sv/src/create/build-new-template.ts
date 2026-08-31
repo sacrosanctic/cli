@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import * as find from 'empathic/find';
 import parser from 'gitignore-parser';
 import { transform } from 'sucrase';
 import glob from 'tiny-glob/sync.js';
+import { isNodeError } from '../core/common.ts';
 import type { File, LanguageType } from './index.ts';
 
-const pkgRoot = path.resolve(import.meta.dirname, '.');
+const SV_ROOT = path.dirname(find.up('package.json', { cwd: import.meta.dirname })!);
+const TEMPLATES_DIR = path.resolve(SV_ROOT, 'packages', 'sv', 'src', 'create', 'templates');
 
 function strip_typescript(content: string): string {
 	let { code } = transform(content, {
@@ -19,7 +22,6 @@ function strip_typescript(content: string): string {
 	return code;
 }
 
-/** @param {string} content */
 function strip_jsdoc(content: string): string {
 	return content
 		.replace(/ \/\*\*\*\//g, '')
@@ -34,16 +36,6 @@ function strip_jsdoc(content: string): string {
 		);
 }
 
-/** @param {string} dir */
-function mkdirp(dir: string): void {
-	try {
-		fs.mkdirSync(dir, { recursive: true });
-	} catch (e) {
-		if ((e as any).code === 'EEXIST') return;
-		throw e;
-	}
-}
-
 /**
  * Generates template JSON files for the minimal template
  * @param {string} dist - output directory
@@ -51,9 +43,15 @@ function mkdirp(dir: string): void {
 export function generate_templates(dist: string): void {
 	const template = 'minimal';
 	const dir = path.join(dist, 'templates', template);
-	mkdirp(dir);
 
-	const cwd = path.resolve(pkgRoot, 'templates', template);
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch (e) {
+		if (isNodeError(e) && e.code === 'EEXIST') return;
+		throw e;
+	}
+
+	const cwd = path.resolve(TEMPLATES_DIR, template);
 
 	const gitignore_file = path.join(cwd, '.gitignore');
 	if (!fs.existsSync(gitignore_file)) {
@@ -105,7 +103,7 @@ export function generate_templates(dist: string): void {
 			} else {
 				const js_contents = contents.replace(
 					/<script([^>]+)>([\s\S]+?)<\/script>/g,
-					(_, attrs: string, typescript: string) => {
+					(match, attrs, typescript) => {
 						const imports = [];
 						const import_pattern = /import (.+?) from/g;
 						let import_match;
