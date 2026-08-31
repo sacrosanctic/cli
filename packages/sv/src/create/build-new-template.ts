@@ -7,7 +7,7 @@ import type { File, LanguageType } from './index.ts';
 
 const pkgRoot = path.resolve(import.meta.dirname, '.');
 
-function convert_typescript(content: string): string {
+function strip_typescript(content: string): string {
 	let { code } = transform(content, {
 		transforms: ['typescript'],
 		disableESTransforms: true
@@ -104,7 +104,7 @@ export async function generate_templates(dist: string): Promise<void> {
 				if (name.endsWith('app.d.ts')) types.checkjs.push({ name, contents });
 				types.typescript.push({ name, contents });
 			} else if (name.endsWith('.ts')) {
-				const js = convert_typescript(contents);
+				const js = strip_typescript(contents);
 
 				types.typescript.push({
 					name,
