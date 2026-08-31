@@ -126,3 +126,14 @@ export function generate_template(templatePath: string, outputPath: string): voi
 		fs.writeFileSync(path.join(outputPath, `${key}.json`), JSON.stringify(content, null, '\t'));
 	}
 }
+
+export const writeTemplate = (
+	language: LanguageType,
+	templatePath: string,
+	write: (path: string, content: string) => void
+): void => {
+	const manifest = path.join(templatePath, `${language}.json`);
+	const files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+
+	for (const file of files) write(file.name, file.contents);
+};
