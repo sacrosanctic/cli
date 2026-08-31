@@ -1,12 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import * as find from 'empathic/find';
 import { transform } from 'sucrase';
 import glob from 'tiny-glob/sync.js';
 import { isNodeError } from '../core/common.ts';
 import type { File, LanguageType } from './index.ts';
-
-const SV_ROOT = path.dirname(find.up('package.json', { cwd: import.meta.dirname })!);
 
 function strip_typescript(content: string): string {
 	let { code } = transform(content, {
@@ -37,11 +34,8 @@ function strip_jsdoc(content: string): string {
 /**
  * Generates template JSON files for the minimal template
  */
-export function generate_templates(templatePath: string, dist: string): void {
-	const template = 'minimal';
+export function generate_templates(cwd: string, dist: string): void {
 	const outputPath = path.join(dist, 'template');
-
-	const TEMPLATES_DIR = path.resolve(SV_ROOT, 'packages', 'sv', 'src', 'create', 'templates');
 
 	try {
 		fs.mkdirSync(outputPath, { recursive: true });
@@ -49,8 +43,6 @@ export function generate_templates(templatePath: string, dist: string): void {
 		if (isNodeError(e) && e.code === 'EEXIST') return;
 		throw e;
 	}
-
-	const cwd = path.resolve(TEMPLATES_DIR, template);
 
 	const types: Record<LanguageType, File[]> = {
 		typescript: [],
