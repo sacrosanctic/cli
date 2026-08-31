@@ -39,7 +39,7 @@ function strip_jsdoc(content: string): string {
  */
 export function generate_templates(templatePath: string, dist: string): void {
 	const template = 'minimal';
-	const outputPath = path.join(dist, template);
+	const outputPath = path.join(dist, 'template');
 
 	const TEMPLATES_DIR = path.resolve(SV_ROOT, 'packages', 'sv', 'src', 'create', 'templates');
 
@@ -60,93 +60,82 @@ export function generate_templates(templatePath: string, dist: string): void {
 
 	const files = glob('**/*', { cwd, filesOnly: true, dot: true });
 	for (const name of files) {
-		if (!name.endsWith('.ts') && !name.endsWith('.svelte')) continue;
-
-		const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
-		const type = name.endsWith('.d.ts') ? '.d.ts' : name.endsWith('.svelte') ? '.svelte' : '.ts';
-
-		switch (type) {
-			case '.d.ts':
-				if (name.endsWith('app.d.ts')) types.checkjs.push({ name, contents });
-				types.typescript.push({ name, contents });
-				break;
-
-			case '.ts': {
-				const js = strip_typescript(contents);
-
-				types.typescript.push({
-					name,
-					contents: strip_jsdoc(contents)
-				});
-
-				types.checkjs.push({
-					name: name.replace(/\.ts$/, '.js'),
-					contents: js
-				});
-
-				types.none.push({
-					name: name.replace(/\.ts$/, '.js'),
-					contents: strip_jsdoc(js)
-				});
-				break;
+		if (name.endsWith('.d.ts')) {
+			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			if (name.endsWith('app.d.ts')) {
+				types.checkjs.push({ name, contents });
 			}
+			types.typescript.push({ name, contents });
+			continue;
+		}
 
-			case '.svelte': {
-				const js_contents = contents.replace(
-					/<script([^>]+)>([\s\S]+?)<\/script>/g,
-					(match, attrs, typescript) => {
-						const imports = [];
-						const import_pattern = /import (.+?) from/g;
-						let import_match;
-						while ((import_match = import_pattern.exec(typescript))) {
-							const word_pattern = /[a-z_$][a-z0-9_$]*/gi;
-							let word_match;
-							while ((word_match = word_pattern.exec(import_match[1]))) {
-								imports.push(word_match[0]);
-							}
+		if (name.endsWith('.ts')) {
+			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			const js = strip_typescript(contents);
+
+			types.typescript.push({
+				name,
+				contents: strip_jsdoc(contents)
+			});
+
+			types.checkjs.push({
+				name: name.replace(/\.ts$/, '.js'),
+				contents: js
+			});
+
+			types.none.push({
+				name: name.replace(/\.ts$/, '.js'),
+				contents: strip_jsdoc(js)
+			});
+			continue;
+		}
+
+		if (name.endsWith('.svelte')) {
+			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+			const js_contents = contents.replace(
+				/<script([^>]+)>([\s\S]+?)<\/script>/g,
+				(match, attrs, typescript) => {
+					const imports = [];
+					const import_pattern = /import (.+?) from/g;
+					let import_match;
+					while ((import_match = import_pattern.exec(typescript))) {
+						const word_pattern = /[a-z_$][a-z0-9_$]*/gi;
+						let word_match;
+						while ((word_match = word_pattern.exec(import_match[1]))) {
+							imports.push(word_match[0]);
 						}
-
-						const suffix = `\n${imports.join(',')}`;
-						const transformed = transform(typescript + suffix, {
-							transforms: ['typescript'],
-							disableESTransforms: true
-						}).code.slice(0, -suffix.length);
-
-						const contents = transformed.trim().replace(/^(.)/gm, '\t$1');
-
-						return `<script${attrs.replace(' lang="ts"', '')}>\n${contents}\n</script>`;
 					}
-				);
 
-				types.typescript.push({
-					name,
-					contents: strip_jsdoc(contents)
-				});
+					const suffix = `\n${imports.join(',')}`;
+					const transformed = transform(typescript + suffix, {
+						transforms: ['typescript'],
+						disableESTransforms: true
+					}).code.slice(0, -suffix.length);
 
-				types.checkjs.push({
-					name,
-					contents: js_contents
-				});
+					const contents = transformed.trim().replace(/^(.)/gm, '\t$1');
 
-				types.none.push({
-					name,
-					contents: strip_jsdoc(js_contents)
-				});
-				break;
-			}
+					return `<script${attrs.replace(' lang="ts"', '')}>\n${contents}\n</script>`;
+				}
+			);
+
+			types.typescript.push({
+				name,
+				contents: strip_jsdoc(contents)
+			});
+
+			types.checkjs.push({
+				name,
+				contents: js_contents
+			});
+
+			types.none.push({
+				name,
+				contents: strip_jsdoc(js_contents)
+			});
 		}
 	}
 
-	fs.writeFileSync(
-		path.join(outputPath, 'files.types=typescript.json'),
-		JSON.stringify(types.typescript, null, '\t')
-	);
-	fs.writeFileSync(
-		path.join(outputPath, 'files.types=checkjs.json'),
-		JSON.stringify(types.checkjs, null, '\t')
-	);
-	fs.writeFileSync(
-		path.join(outputPath, 'files.types=none.json'),
-		JSON.stringify(types.none, null, '\t')
-	);
+	for (const [key, content] of Object.entries(types)) {
+		(path.join(outputPath, `${key}.json`), JSON.stringify(content, null, '\t'));
+	}
 }
