@@ -8,7 +8,6 @@ import { isNodeError } from '../core/common.ts';
 import type { File, LanguageType } from './index.ts';
 
 const SV_ROOT = path.dirname(find.up('package.json', { cwd: import.meta.dirname })!);
-const TEMPLATES_DIR = path.resolve(SV_ROOT, 'packages', 'sv', 'src', 'create', 'templates');
 
 function strip_typescript(content: string): string {
 	let { code } = transform(content, {
@@ -38,14 +37,15 @@ function strip_jsdoc(content: string): string {
 
 /**
  * Generates template JSON files for the minimal template
- * @param {string} dist - output directory
  */
-export function generate_templates(dist: string): void {
+export function generate_templates(templatePath: string, dist: string): void {
 	const template = 'minimal';
-	const dir = path.join(dist, 'templates', template);
+	const outputPath = path.join(dist, template);
+
+	const TEMPLATES_DIR = path.resolve(SV_ROOT, 'packages', 'sv', 'src', 'create', 'templates');
 
 	try {
-		fs.mkdirSync(dir, { recursive: true });
+		fs.mkdirSync(outputPath, { recursive: true });
 	} catch (e) {
 		if (isNodeError(e) && e.code === 'EEXIST') return;
 		throw e;
@@ -145,14 +145,17 @@ export function generate_templates(dist: string): void {
 		}
 	}
 
-	fs.copyFileSync(meta_file, path.join(dir, 'meta.json'));
+	fs.copyFileSync(meta_file, path.join(outputPath, 'meta.json'));
 	fs.writeFileSync(
-		path.join(dir, 'files.types=typescript.json'),
+		path.join(outputPath, 'files.types=typescript.json'),
 		JSON.stringify(types.typescript, null, '\t')
 	);
 	fs.writeFileSync(
-		path.join(dir, 'files.types=checkjs.json'),
+		path.join(outputPath, 'files.types=checkjs.json'),
 		JSON.stringify(types.checkjs, null, '\t')
 	);
-	fs.writeFileSync(path.join(dir, 'files.types=none.json'), JSON.stringify(types.none, null, '\t'));
+	fs.writeFileSync(
+		path.join(outputPath, 'files.types=none.json'),
+		JSON.stringify(types.none, null, '\t')
+	);
 }
