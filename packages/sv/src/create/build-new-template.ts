@@ -136,6 +136,6 @@ export function generate_templates(templatePath: string, dist: string): void {
 	}
 
 	for (const [key, content] of Object.entries(types)) {
-		(path.join(outputPath, `${key}.json`), JSON.stringify(content, null, '\t'));
+		fs.writeFileSync(path.join(outputPath, `${key}.json`), JSON.stringify(content, null, '\t'));
 	}
 }
