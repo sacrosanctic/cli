@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as find from 'empathic/find';
-import parser from 'gitignore-parser';
 import { transform } from 'sucrase';
 import glob from 'tiny-glob/sync.js';
 import { isNodeError } from '../core/common.ts';
@@ -53,19 +52,6 @@ export function generate_templates(templatePath: string, dist: string): void {
 
 	const cwd = path.resolve(TEMPLATES_DIR, template);
 
-	const gitignore_file = path.join(cwd, '.gitignore');
-	if (!fs.existsSync(gitignore_file)) {
-		throw new Error(`"${template}" template must have a .gitignore file`);
-	}
-	const gitignore = parser.compile(fs.readFileSync(gitignore_file, 'utf-8'));
-
-	const ignore_file = path.join(cwd, '.ignore');
-	if (!fs.existsSync(ignore_file)) throw new Error('Template must have a .ignore file');
-	const ignore = parser.compile(fs.readFileSync(ignore_file, 'utf-8'));
-
-	const meta_file = path.join(cwd, '.meta.json');
-	if (!fs.existsSync(meta_file)) throw new Error('Template must have a .meta.json file');
-
 	const types: Record<LanguageType, File[]> = {
 		typescript: [],
 		checkjs: [],
@@ -75,7 +61,6 @@ export function generate_templates(templatePath: string, dist: string): void {
 	const files = glob('**/*', { cwd, filesOnly: true, dot: true });
 	for (const name of files) {
 		if (name === 'package.template.json') continue;
-		if (!gitignore.accepts(name) || !ignore.accepts(name) || name === '.ignore') continue;
 
 		if (/\.(ts|svelte)$/.test(name)) {
 			const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
@@ -145,7 +130,6 @@ export function generate_templates(templatePath: string, dist: string): void {
 		}
 	}
 
-	fs.copyFileSync(meta_file, path.join(outputPath, 'meta.json'));
 	fs.writeFileSync(
 		path.join(outputPath, 'files.types=typescript.json'),
 		JSON.stringify(types.typescript, null, '\t')
