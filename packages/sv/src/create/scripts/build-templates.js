@@ -56,7 +56,7 @@ async function generate_templates(dist, shared) {
 	const templates = fs.readdirSync(path.resolve(pkgRoot, 'templates'));
 
 	for (const template of templates) {
-		if (template[0] === '.') continue;
+		if (template.startsWith('.')) continue;
 
 		const dir = path.join(dist, 'templates', template);
 		const assets = path.join(dir, 'assets');
@@ -421,9 +421,4 @@ export async function buildTemplates(dist) {
 	const shared = await generate_shared(dist);
 	await generate_templates(dist, shared);
 	generate_vite_template(dist);
-}
-
-const dist = process.argv[2];
-if (dist === 'dist') {
-	buildTemplates(dist);
 }
