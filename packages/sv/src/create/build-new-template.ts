@@ -34,24 +34,6 @@ function strip_jsdoc(content: string): string {
 		);
 }
 
-/**
- * @param {string} string
- * @param {RegExp} regexp
- * @param {(m: any, attrs: string, typescript: string) => Promise<string>} replacer
- */
-async function replace_async(
-	string: string,
-	regexp: RegExp,
-	replacer: (m: any, attrs: string, typescript: string) => Promise<string>
-): Promise<string> {
-	const matches = Array.from(string.matchAll(regexp));
-	const replacements = await Promise.all(
-		matches.map((match) => replacer(match[0], match[1], match[2]))
-	);
-	let i = 0;
-	return string.replace(regexp, () => replacements[i++]);
-}
-
 /** @param {string} dir */
 function mkdirp(dir: string): void {
 	try {
@@ -66,7 +48,7 @@ function mkdirp(dir: string): void {
  * Generates template JSON files for the minimal template
  * @param {string} dist - output directory
  */
-export async function generate_templates(dist: string): Promise<void> {
+export function generate_templates(dist: string): void {
 	const template = 'minimal';
 	const dir = path.join(dist, 'templates', template);
 	mkdirp(dir);
@@ -121,10 +103,9 @@ export async function generate_templates(dist: string): Promise<void> {
 					contents: strip_jsdoc(js)
 				});
 			} else {
-				const js_contents = await replace_async(
-					contents,
+				const js_contents = contents.replace(
 					/<script([^>]+)>([\s\S]+?)<\/script>/g,
-					(m, attrs, typescript) => {
+					(_, attrs: string, typescript: string) => {
 						const imports = [];
 						const import_pattern = /import (.+?) from/g;
 						let import_match;
