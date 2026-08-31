@@ -31,10 +31,7 @@ function strip_jsdoc(content: string): string {
 		);
 }
 
-/**
- * Generates template JSON files for the minimal template
- */
-export function generate_templates(templatePath: string, outputPath: string): void {
+export function generate_template(templatePath: string, outputPath: string): void {
 	try {
 		fs.mkdirSync(outputPath, { recursive: true });
 	} catch (e) {
