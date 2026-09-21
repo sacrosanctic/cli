@@ -1,7 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+<<<<<<< HEAD
 import { isNodeError } from '../core/common.ts';
 import type { Common } from './index.ts';
+=======
+import { fileURLToPath } from 'node:url';
+>>>>>>> 1fc7e3f4 (refactor(sv): delete shared/, generate configs in code)
 
 export function mkdirp(dir: string): void {
 	try {
@@ -63,10 +67,4 @@ export function dist(currentPath: string): string {
 	const insideDistFolder = import.meta.url.includes('dist');
 
 	return path.resolve(import.meta.dirname, insideDistFolder ? '' : 'dist', currentPath);
-}
-
-export function getSharedFiles(): Common['files'] {
-	const shared = dist('shared.json');
-	const { files } = JSON.parse(fs.readFileSync(shared, 'utf-8')) as Common;
-	return files;
 }
