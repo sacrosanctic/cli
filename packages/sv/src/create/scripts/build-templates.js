@@ -96,9 +96,9 @@ async function generate_templates(dist) {
 		}
 		const meta = JSON.parse(fs.readFileSync(meta_file, 'utf-8'));
 
-		const gitignore_file = path.join(cwd, '.gitignore');
+		const gitignore_file = path.join(cwd, '_gitignore');
 		if (!fs.existsSync(gitignore_file)) {
-			throw new Error(`"${template}" template must have a .gitignore file`);
+			throw new Error(`"${template}" template must have a _gitignore file`);
 		}
 
 		const gitignore = parser.compile(fs.readFileSync(gitignore_file, 'utf-8'));
@@ -116,8 +116,15 @@ async function generate_templates(dist) {
 			// build-time inputs: `.meta.json` (picker text, handled above),
 			// `package.json` (split per language below) and `tsconfig.json`
 			// (renamed to `jsconfig.json` for JS outputs).
-			// The `.gitignore` doubles as the user-facing gitignore.
+			// The `_gitignore` doubles as the user-facing gitignore.
 			if (name === '.meta.json') continue;
+
+			// `_gitignore` (create-vite convention, npm strips `.gitignore`
+			// on pack) is emitted as the user-facing `.gitignore` asset.
+			if (name === '_gitignore') {
+				copyAsset({ from: path.join(cwd, name), assetsDir: assets, name, destName: '.gitignore' });
+				continue;
+			}
 
 			if (name === 'package.json') {
 				const packagesDir = path.resolve(pkgRoot, '..', '..', '..');
@@ -157,7 +164,7 @@ async function generate_templates(dist) {
 				continue;
 			}
 
-			// ignore contents of .gitignore
+			// ignore contents of _gitignore
 			if (!gitignore.accepts(name)) continue;
 
 			if (/\.(ts|svelte)$/.test(name)) {
