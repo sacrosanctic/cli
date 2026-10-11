@@ -287,9 +287,10 @@ async function replace_async(string, regexp, replacer) {
 
 /**
  * Build `shared.json` from `src/create/assets/`. Each top-level folder is a
- * condition (`agents`, `mcp`, `skills`, `playground`); subpaths are preserved.
+ * condition; subpaths are preserved.
  * Unlike the old `shared/` folder there is no `+`/`-` prefix parsing and no
  * template/language splitting — those now live in the templates themselves.
+ * Add-on-owned content lives next to its add-on (see `src/addons/build-content.js`).
  * @param {string} dist
  */
 async function generate_resources(dist) {
@@ -297,6 +298,12 @@ async function generate_resources(dist) {
 
 	/** @type {Array<{ name: string, include: string[], exclude: string[], contents: string }>} */
 	const files = [];
+
+	// no shared assets (all content is template- or add-on-owned)
+	if (!fs.existsSync(cwd)) {
+		fs.writeFileSync(path.join(dist, 'shared.json'), JSON.stringify({ files }, null, '\t'));
+		return;
+	}
 
 	const globbed = fs
 		.readdirSync(cwd, { recursive: true, withFileTypes: true })

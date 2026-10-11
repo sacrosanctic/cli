@@ -30,12 +30,9 @@ import {
 	templates
 } from '../create/index.ts';
 import {
-	detectPlaygroundDependencies,
-	downloadPlaygroundData,
-	parsePlaygroundUrl,
-	overlayPlaygroundTemplate,
+	preparePlayground,
 	validatePlaygroundUrl
-} from '../create/playground.ts';
+} from '../addons/playground.ts';
 import { dist } from '../create/utils.ts';
 import {
 	addonArgsHandler,
@@ -346,7 +343,7 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 	});
 
 	if (options.fromPlayground) {
-		await createProjectFromPlayground(options.fromPlayground, projectPath);
+		await createProjectFromPlayground(options.fromPlayground, loadedAddons, answers);
 	}
 
 	p.log.success('Project created');
@@ -409,6 +406,8 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 
 	if (argsFormattedAddons.length > 0) argsFormatted.push('--add', ...argsFormattedAddons);
 
+	if (options.fromPlayground) argsFormatted.push('--from-playground', options.fromPlayground);
+
 	const prompt = common.buildAndLogArgs(packageManager, 'create', argsFormatted, [directory]);
 	common.updateReadme(directory, prompt);
 
@@ -438,15 +437,17 @@ export async function createProject(cwd: ProjectPath, options: Options) {
 	return { directory: projectPath, addOnNextSteps, packageManager, depsInstalled };
 }
 
-async function createProjectFromPlayground(url: string, cwd: string): Promise<void> {
-	const urlData = parsePlaygroundUrl(url);
-	const playground = await downloadPlaygroundData(urlData);
+async function createProjectFromPlayground(
+	url: string,
+	loadedAddons: LoadedAddon[],
+	answers: Record<string, OptionValues<any>>
+): Promise<void> {
+	// Fetch once (cached for the add-on's `run`); prompting stays here as user intent.
+	const { dependencies } = await preparePlayground(url);
+	const installDeps = await confirmExternalDependencies(Array.from(dependencies.keys()));
 
-	// Detect external dependencies and ask for confirmation
-	const dependencies = detectPlaygroundDependencies(playground.files);
-	const installDependencies = await confirmExternalDependencies(Array.from(dependencies.keys()));
-
-	overlayPlaygroundTemplate(url, playground, cwd, installDependencies);
+	loadedAddons.unshift(createLoadedAddon(getAddonDetails('playground')));
+	answers['playground'] = { url, installDeps };
 }
 
 async function confirmExternalDependencies(dependencies: string[]): Promise<boolean> {
