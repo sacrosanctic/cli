@@ -70,12 +70,12 @@ export function listFiles(cwd: string): string[] {
 }
 
 /**
- * Copy a single asset file verbatim into an `assets` output dir, prefixing
+ * Save a single asset file verbatim into an `assets` output dir, prefixing
  * leading-dot names with `DOT-` so dotfiles survive publishing. Runtime
- * renames them back via `copyAssets()`. Shared by template and addon builds so all
+ * renames them back via `fetchAssets()`. Shared by template and addon builds so all
  * three emit assets with the same logic.
  */
-export function copyAsset({
+export function saveAsset({
 	from,
 	assetsDir,
 	name,
@@ -92,7 +92,7 @@ export function copyAsset({
 	return dest;
 }
 
-export function copyAssets(from: string, to: string, name: string): void {
+export function fetchAssets(from: string, to: string, name: string): void {
 	copy(from, to, (file: string) => file.replace('DOT-', '.'), kv(name));
 }
 

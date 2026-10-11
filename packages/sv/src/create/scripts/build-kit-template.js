@@ -4,7 +4,7 @@ import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
-import { copyAsset, listFiles, mkdirp } from '../utils.ts';
+import { saveAsset, listFiles, mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
@@ -134,10 +134,10 @@ export async function build_kit_template(dist) {
 			// The `.gitignore` doubles as the user-facing gitignore.
 			if (name === '.meta.json') continue;
 
-			// emitted as the user-facing `.gitignore` asset (`copyAsset` prefixes
+			// emitted as the user-facing `.gitignore` asset (`saveAsset` prefixes
 			// `DOT-` so the dotfile survives npm publishing).
 			if (name === '.gitignore') {
-				copyAsset({ from: path.join(cwd, name), assetsDir: assets, name, destName: '.gitignore' });
+				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name, destName: '.gitignore' });
 				continue;
 			}
 
@@ -265,7 +265,7 @@ export async function build_kit_template(dist) {
 					});
 				}
 			} else {
-				copyAsset({ from: path.join(cwd, name), assetsDir: assets, name });
+				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name });
 			}
 		}
 

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeName } from '@sveltejs/sv-utils';
 import { filePaths, type PackageJSON } from '../core/common.ts';
-import { mkdirp, copyAssets, dist, replace, kv } from './utils.ts';
+import { mkdirp, fetchAssets, dist, replace, kv } from './utils.ts';
 
 export type TemplateType = 'minimal' | 'demo' | 'library' | 'addon' | 'svelte';
 export type LanguageType = 'typescript' | 'checkjs' | 'none';
@@ -41,7 +41,7 @@ export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
 
 function write_template_files(template: string, types: LanguageType, name: string, cwd: string) {
 	const dir = dist(`templates/${template}`);
-	copyAssets(`${dir}/assets`, cwd, name);
+	fetchAssets(`${dir}/assets`, cwd, name);
 
 	// `package.json` ships as a regular entry of the files manifest, so there
 	// is nothing else to copy here. (The internal-only `svelte` template has

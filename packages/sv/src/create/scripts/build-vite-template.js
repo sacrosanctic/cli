@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { copyAsset, listFiles, mkdirp } from '../utils.ts';
+import { saveAsset, listFiles, mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
@@ -40,16 +40,16 @@ export function build_vite_template(dist) {
 
 			// create-vite templates keep the `_gitignore` convention (npm strips
 			// `.gitignore` from published packages); emit it as the user-facing
-			// `.gitignore` asset (`copyAsset` prefixes `DOT-`)
+			// `.gitignore` asset (`saveAsset` prefixes `DOT-`)
 			if (name === '_gitignore' && lang === 'none') {
-				copyAsset({ from: srcPath, assetsDir: assets, name, destName: '.gitignore' });
+				saveAsset({ from: srcPath, assetsDir: assets, name, destName: '.gitignore' });
 				continue;
 			}
 			if (name === '_gitignore') continue;
 
 			// Binary/asset files go to assets folder (only process once for 'none' variant)
 			if (lang === 'none' && !/\.(js|ts|svelte|json|html|css|md)$/i.test(name)) {
-				copyAsset({ from: srcPath, assetsDir: assets, name });
+				saveAsset({ from: srcPath, assetsDir: assets, name });
 				continue;
 			}
 

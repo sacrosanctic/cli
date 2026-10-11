@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { copyAsset, listFiles, mkdirp } from '../utils.ts';
+import { saveAsset, listFiles, mkdirp } from '../utils.ts';
 
 const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
@@ -11,10 +11,10 @@ const addonsDir = path.resolve(import.meta.dirname, '../../addons');
  * `create` never sees them.
  *
  * Files under `<folder>/assets/` are treated exactly like template assets
- * (shared `copyAsset` helper in `src/create/utils.ts`): they are copied
+ * (shared `saveAsset` helper in `src/create/utils.ts`): they are saved
  * verbatim to `<dist>/addons/<folder>/assets/` instead of being encoded as UTF-8
  * text into the JSON manifest, so binary files (images, fonts, etc.) survive
- * the build. At runtime, addons copy them out with the shared `copyAssets()`
+ * the build. At runtime, addons fetch them back out with the shared `fetchAssets()`
  * helper from `src/create/utils.ts`, just like templates do.
  * @param {string} dist
  */
@@ -44,8 +44,8 @@ export function buildAddonContent(dist) {
 		for (const name of names) {
 			if (name === 'assets' || name.startsWith(`assets${path.sep}`)) {
 				// Same as templates: verbatim copy, `DOT-` prefix so dotfiles
-				// survive publishing. Runtime renames back via `copyAssets()`.
-				copyAsset({
+				// survive publishing. Runtime renames back via `fetchAssets()`.
+				saveAsset({
 					from: path.join(contentDir, name),
 					assetsDir: path.join(addonsDist, folder, 'assets'),
 					name: path.relative('assets', name)
