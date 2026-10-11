@@ -284,45 +284,6 @@ async function replace_async(string, regexp, replacer) {
 	return string.replace(regexp, () => replacements[i++]);
 }
 
-/**
- * Build `shared.json` from `src/create/assets/`. Each top-level folder is a
- * condition; subpaths are preserved.
- * Unlike the old `shared/` folder there is no `+`/`-` prefix parsing and no
- * template/language splitting — those now live in the templates themselves.
- * Add-on-owned content lives next to its add-on (see `src/addons/build-content.js`).
- * @param {string} dist
- */
-async function generate_resources(dist) {
-	const cwd = path.resolve(pkgRoot, 'assets');
-
-	/** @type {Array<{ name: string, include: string[], exclude: string[], contents: string }>} */
-	const files = [];
-
-	// no shared assets (all content is template- or add-on-owned)
-	if (!fs.existsSync(cwd)) {
-		fs.writeFileSync(path.join(dist, 'shared.json'), JSON.stringify({ files }, null, '\t'));
-		return;
-	}
-
-	const globbed = fs
-		.readdirSync(cwd, { recursive: true, withFileTypes: true })
-		.filter((entry) => entry.isFile())
-		.map(({ parentPath, name }) => path.join(path.relative(cwd, parentPath), name))
-		.sort();
-	for (const file of globbed) {
-		const contents = fs.readFileSync(path.join(cwd, file), 'utf8');
-		const [condition, ...rest] = file.split(path.sep);
-
-		if (rest.length === 0) {
-			throw new Error(`Asset "${file}" must live inside a condition folder`);
-		}
-
-		files.push({ name: rest.join('/'), include: [condition], exclude: [], contents });
-	}
-
-	fs.writeFileSync(path.join(dist, 'shared.json'), JSON.stringify({ files }, null, '\t'));
-}
-
 /** @param {string} dir */
 export function mkdirp(dir) {
 	try {
@@ -423,7 +384,6 @@ function generate_vite_template(dist) {
 export async function buildTemplates(dist) {
 	mkdirp(dist);
 
-	await generate_resources(dist);
 	await generate_templates(dist);
 	generate_vite_template(dist);
 }

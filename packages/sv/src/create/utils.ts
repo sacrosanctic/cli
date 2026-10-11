@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isNodeError } from '../core/common.ts';
-import type { Resources } from './index.ts';
 
 export function mkdirp(dir: string): void {
 	try {
@@ -63,10 +62,4 @@ export function dist(currentPath: string): string {
 	const insideDistFolder = import.meta.url.includes('dist');
 
 	return path.resolve(import.meta.dirname, insideDistFolder ? '' : 'dist', currentPath);
-}
-
-export function getSharedFiles(): Resources['files'] {
-	const shared = dist('shared.json');
-	const { files } = JSON.parse(fs.readFileSync(shared, 'utf-8')) as Resources;
-	return files;
 }

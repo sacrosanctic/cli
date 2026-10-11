@@ -21,19 +21,6 @@ export type File = {
 	contents: string;
 };
 
-export type Condition = string;
-
-export type Common = {
-	name: string;
-	include: Condition[];
-	exclude: Condition[];
-	contents: string;
-};
-
-export type Resources = {
-	files: Common[];
-};
-
 export function create({ cwd, ...options }: Options): void {
 	mkdirp(cwd);
 
