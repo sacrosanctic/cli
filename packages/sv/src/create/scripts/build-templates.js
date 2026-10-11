@@ -48,10 +48,39 @@ function strip_jsdoc(content) {
 }
 
 /**
- * @param {string} dist
- * @param {Set<string>} shared
+ * Derive the per-language `package.json` variants from the template's
+ * TypeScript-complete `package.json`. `checkjs` only rewrites the tsconfig
+ * path in the check scripts; `none` drops typechecking entirely.
+ * @param {Record<string, any>} pkg
+ * @param {string} template
  */
-async function generate_templates(dist, shared) {
+function package_variants(pkg, template) {
+	const typescript = pkg;
+
+	const checkjs = JSON.parse(JSON.stringify(pkg));
+	for (const key of ['check', 'check:watch']) {
+		if (typeof checkjs.scripts?.[key] === 'string') {
+			checkjs.scripts[key] = checkjs.scripts[key].replaceAll('./tsconfig.json', './jsconfig.json');
+		}
+	}
+
+	const none = JSON.parse(JSON.stringify(pkg));
+	if (none.scripts) {
+		delete none.scripts.check;
+		delete none.scripts['check:watch'];
+	}
+	if (none.devDependencies) {
+		delete none.devDependencies['svelte-check'];
+		// `typescript` is only a typechecking dependency, except for the
+		// library template where packaging (`svelte-package`) needs it
+		if (template !== 'library') delete none.devDependencies.typescript;
+	}
+
+	return { typescript, checkjs, none };
+}
+
+/** @param {string} dist */
+async function generate_templates(dist) {
 	const templates = fs.readdirSync(path.resolve(pkgRoot, 'templates'));
 
 	for (const template of templates) {
@@ -63,19 +92,18 @@ async function generate_templates(dist, shared) {
 
 		const cwd = path.resolve(pkgRoot, 'templates', template);
 
+		const meta_file = path.join(cwd, '.meta.json');
+		if (!fs.existsSync(meta_file)) {
+			throw new Error(`"${template}" template must have a .meta.json file`);
+		}
+		const meta = JSON.parse(fs.readFileSync(meta_file, 'utf-8'));
+
 		const gitignore_file = path.join(cwd, '.gitignore');
 		if (!fs.existsSync(gitignore_file)) {
 			throw new Error(`"${template}" template must have a .gitignore file`);
 		}
 
 		const gitignore = parser.compile(fs.readFileSync(gitignore_file, 'utf-8'));
-
-		const ignore_file = path.join(cwd, '.ignore');
-		if (!fs.existsSync(ignore_file)) throw new Error('Template must have a .ignore file');
-		const ignore = parser.compile(fs.readFileSync(ignore_file, 'utf-8'));
-
-		const meta_file = path.join(cwd, '.meta.json');
-		if (!fs.existsSync(meta_file)) throw new Error('Template must have a .meta.json file');
 
 		/** @type {Record<LanguageType, File[]>} */
 		const types = {
@@ -90,10 +118,14 @@ async function generate_templates(dist, shared) {
 			.map(({ parentPath, name }) => path.join(path.relative(cwd, parentPath), name))
 			.sort();
 		for (const name of files) {
-			// the package.template.json thing is a bit annoying — basically we want
-			// to be able to develop and deploy the app from here, but have a different
-			// package.json in newly created projects (based on package.template.json)
-			if (name === 'package.template.json') {
+			// Every file in the template folder is user-facing, except
+			// build-time inputs: `.meta.json` (picker text, handled above),
+			// `package.json` (split per language below) and `tsconfig.json`
+			// (renamed to `jsconfig.json` for JS outputs).
+			// The `.gitignore` doubles as the user-facing gitignore.
+			if (name === '.meta.json') continue;
+
+			if (name === 'package.json') {
 				const packagesDir = path.resolve(pkgRoot, '..', '..', '..');
 				const getVersion = (/** @type {string} */ pkgDir) => {
 					const pkgPath = path.join(packagesDir, pkgDir, 'package.json');
@@ -111,15 +143,28 @@ async function generate_templates(dist, shared) {
 				contents = replaceWorkspace(contents, 'sv', getVersion('sv'));
 				contents = replaceWorkspace(contents, '@sveltejs/sv-utils', getVersion('sv-utils'));
 
-				fs.writeFileSync(path.join(dir, 'package.json'), contents);
+				const variants = package_variants(JSON.parse(contents), template);
+				// `package.json` is just another typed file: it rides along
+				// in `files.types=*` like everything else, no separate manifest.
+				for (const lang of /** @type {LanguageType[]} */ (['typescript', 'checkjs', 'none'])) {
+					types[lang].push({
+						name: 'package.json',
+						contents: JSON.stringify(variants[lang], null, '\t') + '\n'
+					});
+				}
 				continue;
 			}
 
-			// ignore files that are written conditionally
-			if (shared.has(name)) continue;
+			if (name === 'tsconfig.json') {
+				const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
+				types.typescript.push({ name, contents });
+				types.checkjs.push({ name: 'jsconfig.json', contents });
+				types.none.push({ name: 'jsconfig.json', contents });
+				continue;
+			}
 
-			// ignore contents of .gitignore or .ignore
-			if (!gitignore.accepts(name) || !ignore.accepts(name) || name === '.ignore') continue;
+			// ignore contents of .gitignore
+			if (!gitignore.accepts(name)) continue;
 
 			if (/\.(ts|svelte)$/.test(name)) {
 				const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
@@ -210,7 +255,7 @@ async function generate_templates(dist, shared) {
 			}
 		}
 
-		fs.copyFileSync(meta_file, path.join(dir, 'meta.json'));
+		fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta, null, '\t'));
 		fs.writeFileSync(
 			path.join(dir, 'files.types=typescript.json'),
 			JSON.stringify(types.typescript, null, '\t')
@@ -241,13 +286,14 @@ async function replace_async(string, regexp, replacer) {
 }
 
 /**
+ * Build `shared.json` from `src/create/assets/`. Each top-level folder is a
+ * condition (`agents`, `mcp`, `skills`, `playground`); subpaths are preserved.
+ * Unlike the old `shared/` folder there is no `+`/`-` prefix parsing and no
+ * template/language splitting — those now live in the templates themselves.
  * @param {string} dist
  */
-async function generate_shared(dist) {
-	const cwd = path.resolve(pkgRoot, 'shared');
-
-	/** @type {Set<string>} */
-	const shared = new Set();
+async function generate_resources(dist) {
+	const cwd = path.resolve(pkgRoot, 'assets');
 
 	/** @type {Array<{ name: string, include: string[], exclude: string[], contents: string }>} */
 	const files = [];
@@ -259,74 +305,16 @@ async function generate_shared(dist) {
 		.sort();
 	for (const file of globbed) {
 		const contents = fs.readFileSync(path.join(cwd, file), 'utf8');
+		const [condition, ...rest] = file.split(path.sep);
 
-		/** @type {string[]} */
-		const include = [];
-
-		/** @type {string[]} */
-		const exclude = [];
-
-		let name = file;
-
-		if (file.startsWith('+') || file.startsWith('-')) {
-			const [conditions, ...rest] = file.split(path.sep);
-
-			const pattern = /([+-])([a-z0-9]+)/g;
-			let match;
-			// @ts-ignore
-			while ((match = pattern.exec(conditions))) {
-				const set = match[1] === '+' ? include : exclude;
-				// @ts-ignore
-				set.push(match[2]);
-			}
-
-			name = rest.join('/');
+		if (rest.length === 0) {
+			throw new Error(`Asset "${file}" must live inside a condition folder`);
 		}
 
-		if (name.endsWith('.ts') && !include.includes('typescript')) {
-			// file includes types in TypeScript and JSDoc —
-			// create .js file, with and without JSDoc
-			const js = await convert_typescript(contents);
-			const js_name = name.replace(/\.ts$/, '.js');
-
-			// typescript
-			files.push({
-				name,
-				include: [...include, 'typescript'],
-				exclude,
-				contents: strip_jsdoc(contents)
-			});
-
-			// checkjs
-			files.push({
-				name: js_name,
-				include: [...include, 'checkjs'],
-				exclude,
-				contents: js
-			});
-
-			// no typechecking
-			files.push({
-				name: js_name,
-				include,
-				exclude: [...exclude, 'typescript', 'checkjs'],
-				contents: strip_jsdoc(js)
-			});
-
-			shared.add(name);
-			shared.add(js_name);
-		} else {
-			shared.add(name);
-			files.push({ name, include, exclude, contents });
-		}
+		files.push({ name: rest.join('/'), include: [condition], exclude: [], contents });
 	}
 
-	files.sort((a, b) => a.include.length + a.exclude.length - (b.include.length + b.exclude.length));
-
 	fs.writeFileSync(path.join(dist, 'shared.json'), JSON.stringify({ files }, null, '\t'));
-
-	shared.delete('package.json');
-	return shared;
 }
 
 /** @param {string} dir */
@@ -429,8 +417,8 @@ function generate_vite_template(dist) {
 export async function buildTemplates(dist) {
 	mkdirp(dist);
 
-	const shared = await generate_shared(dist);
-	await generate_templates(dist, shared);
+	await generate_resources(dist);
+	await generate_templates(dist);
 	generate_vite_template(dist);
 }
 

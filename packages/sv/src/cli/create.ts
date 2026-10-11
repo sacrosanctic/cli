@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import * as p from '@clack/prompts';
-import { color, loadPackageJson, resolveCommandArray } from '@sveltejs/sv-utils';
+import { color, resolveCommandArray } from '@sveltejs/sv-utils';
 import { Command, Option } from 'commander';
 import * as v from 'valibot';
 import { getAddonDetails } from '../addons/index.ts';
@@ -496,9 +496,14 @@ export async function createVirtualWorkspace({
 		};
 	}
 
-	// Let's read the package.json of the template we will use and add the dependencies to the override
-	const templatePackageJsonPath = dist(path.join('templates', template, type));
-	const { data: packageJson } = loadPackageJson(templatePackageJsonPath);
+	// Let's read the package.json of the template we will use and add the dependencies to the override.
+	// It ships as a regular entry of the template's files manifest.
+	const manifestPath = dist(path.join('templates', template, `files.types=${type}.json`));
+	const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Array<{
+		name: string;
+		contents: string;
+	}>;
+	const packageJson = JSON.parse(manifest.find((file) => file.name === 'package.json')!.contents);
 	override.dependencies = {
 		...packageJson.devDependencies,
 		...packageJson.dependencies,
