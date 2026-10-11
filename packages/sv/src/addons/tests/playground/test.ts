@@ -2,14 +2,14 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import * as find from 'empathic/find';
 import { expect, test } from 'vitest';
-import { create } from '../index.ts';
+import { create } from '../../../create/index.ts';
 import {
 	detectPlaygroundDependencies,
 	downloadPlaygroundData,
 	parsePlaygroundUrl,
 	overlayPlaygroundTemplate,
 	validatePlaygroundUrl
-} from '../playground.ts';
+} from '../../../create/playground.ts';
 
 const ROOT = path.dirname(find.up('pnpm-workspace.yaml', { cwd: import.meta.dirname })!);
 const TEST_DIR = path.resolve(ROOT, 'packages', 'sv', '.test-output', 'playground');
