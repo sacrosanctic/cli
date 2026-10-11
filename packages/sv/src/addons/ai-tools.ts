@@ -212,7 +212,9 @@ const addon: Addon<AddonOptions<AiToolsOptions>, 'ai-tools'> = defineAddon({
 		const filesAdded: string[] = [];
 		const filesExistingAlready: string[] = [];
 
-		const { files } = JSON.parse(fs.readFileSync(dist('ai-tools.json'), 'utf-8')) as {
+		const { files } = JSON.parse(
+			fs.readFileSync(dist(path.join('addons', 'ai-tools.json')), 'utf-8')
+		) as {
 			files: Array<{ name: string; contents: string }>;
 		};
 		// Content is namespaced by kind (`mcp/`, `skills/`, `agents/`); strip the

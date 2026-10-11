@@ -211,6 +211,7 @@ export async function buildCliTemplates() {
 	];
 	for (const dist of dists) {
 		mkdirp(dist);
+
 		await build_kit_template(dist);
 		build_vite_template(dist);
 		buildAddonContent(dist);

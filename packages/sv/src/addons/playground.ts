@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import {
 	type AstTypes,
 	Walker,
@@ -266,7 +267,9 @@ const addon: Addon<AddonOptions<PlaygroundOptions>, 'playground'> = defineAddon(
 		}
 
 		// add playground shared files
-		const { files } = JSON.parse(fs.readFileSync(dist('playground.json'), 'utf-8')) as {
+		const { files } = JSON.parse(
+			fs.readFileSync(dist(path.join('addons', 'playground.json')), 'utf-8')
+		) as {
 			files: Array<{ name: string; contents: string }>;
 		};
 		for (const file of files) {

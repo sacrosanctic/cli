@@ -95,7 +95,7 @@ export function copyAsset({
 export function dist(currentPath: string): string {
 	// we need to make this check, because vitest is making the package root the cwd,
 	// but executing the cli from the command line already makes the dist folder the cwd.
-	const insideDistFolder = import.meta.url.includes('dist');
+	const insideDistFolder = import.meta.url.split('/').includes('dist');
 
 	return path.resolve(import.meta.dirname, insideDistFolder ? '' : 'dist', currentPath);
 }

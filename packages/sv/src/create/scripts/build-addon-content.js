@@ -6,13 +6,13 @@ const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
 /**
  * Bundle every addon content folder (any directory inside `src/addons/`,
- * e.g. `ai-tools/`) into a `<folder>.json` manifest. Addons own these files
- * outright: they live next to the addon and are read back at runtime, so
+ * e.g. `ai-tools/`) into an `addons/<folder>.json` manifest. Addons own these
+ * files outright: they live next to the addon and are read back at runtime, so
  * `create` never sees them.
  *
  * Files under `<folder>/assets/` are treated exactly like template assets
  * (shared `copyAsset` helper in `src/create/utils.ts`): they are copied
- * verbatim to `<dist>/<folder>/assets/` instead of being encoded as UTF-8
+ * verbatim to `<dist>/addons/<folder>/assets/` instead of being encoded as UTF-8
  * text into the JSON manifest, so binary files (images, fonts, etc.) survive
  * the build. At runtime, addons copy them out with the shared `copy()`
  * helper from `src/create/utils.ts`, just like templates do.
@@ -32,6 +32,9 @@ export function buildAddonContent(dist) {
 		.map((entry) => entry.name)
 		.sort();
 
+	const addonsDist = path.join(dist, 'addons');
+	mkdirp(addonsDist);
+
 	for (const folder of folders) {
 		const contentDir = path.join(addonsDir, folder);
 
@@ -44,7 +47,7 @@ export function buildAddonContent(dist) {
 				// survive publishing. Runtime renames back via `copy()`.
 				copyAsset({
 					from: path.join(contentDir, name),
-					assetsDir: path.join(dist, folder, 'assets'),
+					assetsDir: path.join(addonsDist, folder, 'assets'),
 					name: path.relative('assets', name)
 				});
 				continue;
@@ -52,7 +55,9 @@ export function buildAddonContent(dist) {
 			files.push({ name, contents: fs.readFileSync(path.join(contentDir, name), 'utf8') });
 		}
 
-		mkdirp(dist);
-		fs.writeFileSync(path.join(dist, `${folder}.json`), JSON.stringify({ files }, null, '\t'));
+		fs.writeFileSync(
+			path.join(addonsDist, `${folder}.json`),
+			JSON.stringify({ files }, null, '\t')
+		);
 	}
 }
