@@ -47,7 +47,15 @@ function write_template_files(template: string, types: LanguageType, name: strin
 	// is nothing else to copy here. (The internal-only `svelte` template has
 	// no `package.json` entry, hence the `existsSync` guard below.)
 	const manifest = `${dir}/files.types=${types}.json`;
-	const files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+	let files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+
+	// text files shared by every language variant ride along in
+	// `files.shared.json` when it exists
+	const shared_path = `${dir}/files.shared.json`;
+	if (fs.existsSync(shared_path)) {
+		const shared = JSON.parse(fs.readFileSync(shared_path, 'utf-8')) as File[];
+		files = [...shared, ...files];
+	}
 
 	files.forEach((file) => {
 		const dest = path.join(cwd, file.name);

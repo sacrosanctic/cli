@@ -125,6 +125,9 @@ export async function build_kit_template(dist) {
 			none: []
 		};
 
+		/** @type {File[]} */
+		const shared = [];
+
 		const files = listFiles(cwd);
 		for (const name of files) {
 			// Every file in the template folder is user-facing, except
@@ -133,13 +136,6 @@ export async function build_kit_template(dist) {
 			// (renamed to `jsconfig.json` for JS outputs).
 			// The `.gitignore` doubles as the user-facing gitignore.
 			if (name === '.meta.json') continue;
-
-			// emitted as the user-facing `.gitignore` asset (`saveAsset` prefixes
-			// `DOT-` so the dotfile survives npm publishing).
-			if (name === '.gitignore') {
-				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name, destName: '.gitignore' });
-				continue;
-			}
 
 			if (name === 'package.json') {
 				const packagesDir = path.resolve(pkgRoot, '..', '..', '..');
@@ -264,9 +260,48 @@ export async function build_kit_template(dist) {
 						contents: strip_jsdoc(js_contents)
 					});
 				}
+				// text files are embedded verbatim in `files.shared.json` (copied out
+				// as UTF-8 at runtime); only binaries go to the assets folder.
+				// `.gitignore` must be embedded too, as npm strips `.gitignore` files
+				// when publishing.
+			} else if (name === '.gitignore' || /\.(js|cjs|mjs|json|md|html|css)$/.test(name)) {
+				shared.push({ name, contents: fs.readFileSync(path.join(cwd, name), 'utf8') });
 			} else {
 				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name });
 			}
+		}
+
+		// identical files across every language variant belong in
+		// `files.shared.json` instead of being duplicated per variant.
+		const langs = /** @type {LanguageType[]} */ (Object.keys(types)).filter(
+			(lang) => types[lang].length > 0
+		);
+		const byName = new Map();
+		for (const lang of langs) {
+			for (const file of types[/** @type {LanguageType} */ (lang)]) {
+				if (!byName.has(file.name)) byName.set(file.name, new Map());
+				byName.get(file.name).set(lang, file.contents);
+			}
+		}
+		for (const [name, contentsByLang] of byName) {
+			const contentsList = [...contentsByLang.values()];
+			const contents = contentsList[0];
+			if (
+				contentsList.length !== langs.length ||
+				contentsList.some((entry) => entry !== contents)
+			) {
+				continue;
+			}
+			shared.push({ name, contents });
+			for (const lang of langs) {
+				types[/** @type {LanguageType} */ (lang)] = types[
+					/** @type {LanguageType} */ (lang)
+				].filter((file) => file.name !== name);
+			}
+		}
+
+		if (shared.length > 0) {
+			fs.writeFileSync(path.join(dir, 'files.shared.json'), JSON.stringify(shared, null, '\t'));
 		}
 
 		fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta, null, '\t'));

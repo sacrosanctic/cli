@@ -22,6 +22,9 @@ export function build_vite_template(dist) {
 		none: []
 	};
 
+	/** @type {File[]} */
+	const shared = [];
+
 	// Process both JS and TS variants
 	const variants = /** @type {const} */ ([
 		{ src: 'template-svelte', lang: /** @type {LanguageType} */ ('none') },
@@ -38,11 +41,11 @@ export function build_vite_template(dist) {
 			const srcPath = path.join(srcDir, name);
 			const contents = fs.readFileSync(srcPath, 'utf8');
 
-			// create-vite templates keep the `_gitignore` convention (npm strips
-			// `.gitignore` from published packages); emit it as the user-facing
-			// `.gitignore` asset (`saveAsset` prefixes `DOT-`)
+			// create-vite templates keep the `_gitignore` convention; embed it as
+			// the user-facing `.gitignore` in `files.shared.json` so npm
+			// publication can't strip it (no `DOT-` workaround needed)
 			if (name === '_gitignore' && lang === 'none') {
-				saveAsset({ from: srcPath, assetsDir: assets, name, destName: '.gitignore' });
+				shared.push({ name: '.gitignore', contents });
 				continue;
 			}
 			if (name === '_gitignore') continue;
@@ -64,6 +67,21 @@ export function build_vite_template(dist) {
 		}
 	}
 
+	// identical files across every used language variant belong in
+	// `files.shared.json` instead of being duplicated per variant
+	const variantLangs = /** @type {LanguageType[]} */ (['typescript', 'none']);
+	for (const name of new Set(
+		[...types.typescript, ...types.none].map((file) => file.name)
+	)) {
+		const entries = variantLangs.map((lang) => types[lang].find((file) => file.name === name));
+		const contents = entries[0]?.contents;
+		if (!entries.every((entry) => entry?.contents === contents)) continue;
+		shared.push({ name, contents });
+		for (const lang of variantLangs) {
+			types[lang] = types[lang].filter((file) => file.name !== name);
+		}
+	}
+
 	// Write meta.json (internal template, minimal metadata)
 	fs.writeFileSync(
 		path.join(dir, 'meta.json'),
@@ -73,6 +91,10 @@ export function build_vite_template(dist) {
 			'\t'
 		)
 	);
+
+	if (shared.length > 0) {
+		fs.writeFileSync(path.join(dir, 'files.shared.json'), JSON.stringify(shared, null, '\t'));
+	}
 
 	// Write files for each language type
 	fs.writeFileSync(
