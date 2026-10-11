@@ -7,7 +7,7 @@ import {
 	detectPlaygroundDependencies,
 	downloadPlaygroundData,
 	parsePlaygroundUrl,
-	setupPlaygroundProject,
+	overlayPlaygroundTemplate,
 	validatePlaygroundUrl
 } from '../playground.ts';
 
@@ -166,7 +166,7 @@ test('download and convert playground e2e (svelte async)', async () => {
 		svelteVersion: '5.38.7'
 	});
 
-	setupPlaygroundProject(
+	overlayPlaygroundTemplate(
 		'https://svelte.dev/playground/770bbef086034b9f8e337bab57efe8d8',
 		playground,
 		directory,
@@ -218,7 +218,7 @@ test('download and convert playground e2e (pre svelte async)', async () => {
 		svelteVersion: '5.0.5'
 	});
 
-	setupPlaygroundProject(
+	overlayPlaygroundTemplate(
 		'https://svelte.dev/playground/770bbef086034b9f8e337bab57efe8d8',
 		playground,
 		directory,

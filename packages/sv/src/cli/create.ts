@@ -33,7 +33,7 @@ import {
 	detectPlaygroundDependencies,
 	downloadPlaygroundData,
 	parsePlaygroundUrl,
-	setupPlaygroundProject,
+	overlayPlaygroundTemplate,
 	validatePlaygroundUrl
 } from '../create/playground.ts';
 import { dist } from '../create/utils.ts';
@@ -446,7 +446,7 @@ async function createProjectFromPlayground(url: string, cwd: string): Promise<vo
 	const dependencies = detectPlaygroundDependencies(playground.files);
 	const installDependencies = await confirmExternalDependencies(Array.from(dependencies.keys()));
 
-	setupPlaygroundProject(url, playground, cwd, installDependencies);
+	overlayPlaygroundTemplate(url, playground, cwd, installDependencies);
 }
 
 async function confirmExternalDependencies(dependencies: string[]): Promise<boolean> {

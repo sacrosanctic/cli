@@ -165,7 +165,7 @@ function extractPackageVersion(pkgName: string) {
 	return version;
 }
 
-export function setupPlaygroundProject(
+export function overlayPlaygroundTemplate(
 	url: string,
 	playground: PlaygroundData,
 	cwd: string,
