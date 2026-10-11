@@ -58,7 +58,7 @@ export function copy(
 
 /**
  * List all files under `cwd` (recursive) as sorted paths relative to `cwd`.
- * Shared by the build scripts (`build-templates.js`, `build-addon-content.js`)
+ * Shared by the build scripts (`build-kit-template.js`, `build-addon-content.js`)
  * so templates, the vite template, and addons enumerate source files identically.
  */
 export function listFiles(cwd: string): string[] {
