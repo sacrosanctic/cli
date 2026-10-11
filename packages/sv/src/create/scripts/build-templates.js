@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
@@ -9,8 +9,6 @@ import oxfmtConfig from '../../../../../oxfmt.config.ts';
 /** @import { File, LanguageType } from '../index.ts' */
 
 const pkgRoot = path.resolve(import.meta.dirname, '..');
-const require = createRequire(import.meta.url);
-const createVitePath = path.dirname(require.resolve('create-vite/package.json'));
 
 /** @param {string} content */
 async function convert_typescript(content) {
@@ -318,6 +316,8 @@ function generate_vite_template(dist) {
 	]);
 
 	for (const { src, lang } of variants) {
+		const createVitePackageJson = fileURLToPath(import.meta.resolve('create-vite/package.json'));
+		const createVitePath = path.dirname(createVitePackageJson);
 		const srcDir = path.join(createVitePath, src);
 		const files = fs
 			.readdirSync(srcDir, { recursive: true, withFileTypes: true })
@@ -386,9 +386,4 @@ export async function buildTemplates(dist) {
 
 	await generate_templates(dist);
 	generate_vite_template(dist);
-}
-
-const dist = process.argv[2];
-if (dist === 'dist') {
-	buildTemplates(dist);
 }

@@ -9,6 +9,13 @@ const addonsDir = import.meta.dirname;
  * e.g. `ai-tools/`) into a `<folder>.json` manifest. Addons own these files
  * outright: they live next to the addon and are read back at runtime, so
  * `create` never sees them.
+ *
+ * Files under `<folder>/assets/` are treated exactly like template assets
+ * (see `src/create/scripts/build-templates.js`): they are copied verbatim
+ * with `fs.copyFileSync` to `<dist>/<folder>/assets/` instead of being
+ * encoded as UTF-8 text into the JSON manifest, so binary files (images,
+ * fonts, etc.) survive the build. At runtime, addons copy them out with the
+ * shared `copy()` helper from `src/create/utils.ts`, just like templates do.
  * @param {string} dist
  */
 export function buildAddonContent(dist) {
@@ -28,14 +35,37 @@ export function buildAddonContent(dist) {
 	for (const folder of folders) {
 		const contentDir = path.join(addonsDir, folder);
 
-		const files = fs
+		const names = fs
 			.readdirSync(contentDir, { recursive: true, withFileTypes: true })
 			.filter((entry) => entry.isFile())
 			.map(({ parentPath, name }) => path.join(path.relative(contentDir, parentPath), name))
-			.sort()
-			.map((name) => ({ name, contents: fs.readFileSync(path.join(contentDir, name), 'utf8') }));
+			.sort();
+
+		const files = [];
+		for (const name of names) {
+			if (name === 'assets' || name.startsWith(`assets${path.sep}`)) {
+				// Same as templates: verbatim copy, `DOT-` prefix so dotfiles
+				// survive publishing. Runtime renames back via `copy()`.
+				const rel = path.relative('assets', name);
+				const dest = path.join(dist, folder, 'assets', rel.replace(/^\./, 'DOT-'));
+				mkdirp(path.dirname(dest));
+				fs.copyFileSync(path.join(contentDir, name), dest);
+				continue;
+			}
+			files.push({ name, contents: fs.readFileSync(path.join(contentDir, name), 'utf8') });
+		}
 
 		fs.mkdirSync(dist, { recursive: true });
 		fs.writeFileSync(path.join(dist, `${folder}.json`), JSON.stringify({ files }, null, '\t'));
+	}
+}
+
+/** @param {string} dir */
+function mkdirp(dir) {
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch (e) {
+		if (/** @type {any} */ (e).code === 'EEXIST') return;
+		throw e;
 	}
 }
