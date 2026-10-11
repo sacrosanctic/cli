@@ -5,6 +5,7 @@ import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
+import { mkdirp } from './fs-utils.js';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
@@ -280,16 +281,6 @@ async function replace_async(string, regexp, replacer) {
 	);
 	let i = 0;
 	return string.replace(regexp, () => replacements[i++]);
-}
-
-/** @param {string} dir */
-export function mkdirp(dir) {
-	try {
-		fs.mkdirSync(dir, { recursive: true });
-	} catch (e) {
-		if (/** @type {any} */ (e).code === 'EEXIST') return;
-		throw e;
-	}
 }
 
 /**

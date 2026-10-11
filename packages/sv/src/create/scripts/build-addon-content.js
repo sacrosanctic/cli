@@ -1,6 +1,7 @@
 // @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
+import { mkdirp } from './fs-utils.js';
 
 const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
@@ -57,15 +58,5 @@ export function buildAddonContent(dist) {
 
 		fs.mkdirSync(dist, { recursive: true });
 		fs.writeFileSync(path.join(dist, `${folder}.json`), JSON.stringify({ files }, null, '\t'));
-	}
-}
-
-/** @param {string} dir */
-function mkdirp(dir) {
-	try {
-		fs.mkdirSync(dir, { recursive: true });
-	} catch (e) {
-		if (/** @type {any} */ (e).code === 'EEXIST') return;
-		throw e;
 	}
 }
