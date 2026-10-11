@@ -5,7 +5,7 @@ import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
-import { mkdirp } from './fs-utils.js';
+import { mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 

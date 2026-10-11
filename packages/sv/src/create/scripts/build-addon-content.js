@@ -1,7 +1,7 @@
 // @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
-import { mkdirp } from './fs-utils.js';
+import { mkdirp } from '../utils.ts';
 
 const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
