@@ -20,18 +20,13 @@ import { dist } from '../create/utils.ts';
 // ============================================================================
 
 export function validatePlaygroundUrl(link: string): boolean {
-	try {
-		const url = new URL(link);
-		if (url.hostname !== 'svelte.dev' || !url.pathname.startsWith('/playground/')) {
-			return false;
-		}
-
-		const { playgroundId, hash } = parsePlaygroundUrl(link);
-		return playgroundId !== undefined || hash !== undefined;
-	} catch {
-		// new Url() will throw if the URL is invalid
+	const url = URL.parse(link);
+	if (!url || url.hostname !== 'svelte.dev' || !url.pathname.startsWith('/playground/')) {
 		return false;
 	}
+
+	const { playgroundId, hash } = parsePlaygroundUrl(link);
+	return playgroundId !== undefined || hash !== undefined;
 }
 
 export type PlaygroundURL = {
