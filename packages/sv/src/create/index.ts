@@ -21,7 +21,7 @@ export type File = {
 	contents: string;
 };
 
-export type Condition = 'playground' | 'mcp' | 'skills' | 'agents';
+export type Condition = 'playground';
 
 export type Common = {
 	name: string;
