@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import * as find from 'empathic/find';
 import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
@@ -8,6 +9,11 @@ import { saveAsset, listFiles, mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
+const pnpmWorkspace = find.up('pnpm-workspace.yaml', { cwd: import.meta.dirname });
+if (!pnpmWorkspace) {
+	throw new Error("This project must have a 'pnpm-workspace.yaml' file");
+}
+const ROOT = path.dirname(pnpmWorkspace);
 const pkgRoot = path.resolve(import.meta.dirname, '..');
 
 /** @param {string} content */
@@ -139,9 +145,8 @@ export async function build_kit_template(dist) {
 			if (name === '.meta.json') continue;
 
 			if (name === 'package.json') {
-				const packagesDir = path.resolve(pkgRoot, '..', '..', '..');
 				const getVersion = (/** @type {string} */ pkgDir) => {
-					const pkgPath = path.join(packagesDir, pkgDir, 'package.json');
+					const pkgPath = path.join(ROOT, 'packages', pkgDir, 'package.json');
 					return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
 				};
 				const replaceWorkspace = (
@@ -261,11 +266,15 @@ export async function build_kit_template(dist) {
 						contents: strip_jsdoc(js_contents)
 					});
 				}
-			// text files are embedded verbatim in `files.shared.json` (copied out
-			// as UTF-8 at runtime); only binaries go to the assets folder.
-			// `.gitignore` and `.npmrc` must be embedded too, as npm strips
-			// dotfiles like these when publishing.
-			} else if (name === '.gitignore' || name === '.npmrc' || /\.(js|cjs|mjs|json|md|html|css|txt)$/.test(name)) {
+				// text files are embedded verbatim in `files.shared.json` (copied out
+				// as UTF-8 at runtime); only binaries go to the assets folder.
+				// `.gitignore` and `.npmrc` must be embedded too, as npm strips
+				// dotfiles like these when publishing.
+			} else if (
+				name === '.gitignore' ||
+				name === '.npmrc' ||
+				/\.(js|cjs|mjs|json|md|html|css|txt)$/.test(name)
+			) {
 				shared.push({ name, contents: fs.readFileSync(path.join(cwd, name), 'utf8') });
 			} else {
 				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name });

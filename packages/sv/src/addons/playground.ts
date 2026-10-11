@@ -253,7 +253,7 @@ const addon: Addon<AddonOptions<PlaygroundOptions>, 'playground'> = defineAddon(
 		const { playground, dependencies } = await preparePlayground(options.url);
 
 		const mainFile = playground.files.find((file) => file.name === 'App.svelte');
-		if (!mainFile) return cancel('Failed to find `App.svelte` entrypoint.');
+		if (!mainFile) return cancel('Failed to find `App.svelte` entrypoint');
 
 		for (const file of playground.files) {
 			let content = file.content;
