@@ -1,6 +1,6 @@
 {
 	"extends": "../../tsconfig.json",
-	"include": ["bin.ts", "src/**/*.ts"],
+	"include": ["bin.ts", "src/**/*.ts", "src/create/scripts/**/*.js"],
 	"exclude": [
 		"dist/**",
 		"src/create/templates/**",
@@ -8,6 +8,6 @@
 		"src/migrate/migrations/**/tests/**"
 	],
 	"compilerOptions": {
-		"checkJs": false
+		"checkJs": true
 	}
 }
