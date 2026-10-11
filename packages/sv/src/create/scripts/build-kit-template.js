@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as find from 'empathic/find';
-import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
@@ -122,8 +121,6 @@ export async function build_kit_template(dist) {
 			throw new Error(`"${template}" template must have a .gitignore file`);
 		}
 
-		const gitignore = parser.compile(fs.readFileSync(gitignore_file, 'utf-8'));
-
 		/** @type {Record<LanguageType, File[]>} */
 		const types = {
 			typescript: [],
@@ -180,9 +177,6 @@ export async function build_kit_template(dist) {
 				types.none.push({ name: 'jsconfig.json', contents });
 				continue;
 			}
-
-			// ignore contents of .gitignore
-			if (!gitignore.accepts(name)) continue;
 
 			if (/\.(ts|svelte)$/.test(name)) {
 				const contents = fs.readFileSync(path.join(cwd, name), 'utf8');
