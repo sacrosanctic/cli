@@ -202,7 +202,13 @@ export default defineConfig([
 export async function buildCliTemplates() {
 	const start = performance.now();
 
-	const dists = [path.resolve('packages/sv/dist'), path.resolve('packages/sv/src/create/dist')];
+	const dists = [
+		// where the bundled CLI resolves templates/addons at runtime
+		path.resolve('packages/sv/dist'),
+		// where `dist()` in `src/create/utils.ts` resolves them when running
+		// from source (dev/vitest, `import.meta.url` doesn't include `dist`)
+		path.resolve('packages/sv/src/create/dist')
+	];
 	for (const dist of dists) {
 		mkdirp(dist);
 		await build_kit_template(dist);
