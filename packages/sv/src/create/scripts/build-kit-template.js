@@ -134,7 +134,8 @@ export async function build_kit_template(dist) {
 			// build-time inputs: `.meta.json` (picker text, handled above),
 			// `package.json` (split per language below) and `tsconfig.json`
 			// (renamed to `jsconfig.json` for JS outputs).
-			// The `.gitignore` doubles as the user-facing gitignore.
+			// The `.gitignore` doubles as the user-facing gitignore,
+			// `.npmrc` is a real user-facing file.
 			if (name === '.meta.json') continue;
 
 			if (name === 'package.json') {
@@ -260,11 +261,11 @@ export async function build_kit_template(dist) {
 						contents: strip_jsdoc(js_contents)
 					});
 				}
-				// text files are embedded verbatim in `files.shared.json` (copied out
-				// as UTF-8 at runtime); only binaries go to the assets folder.
-				// `.gitignore` must be embedded too, as npm strips `.gitignore` files
-				// when publishing.
-			} else if (name === '.gitignore' || /\.(js|cjs|mjs|json|md|html|css)$/.test(name)) {
+			// text files are embedded verbatim in `files.shared.json` (copied out
+			// as UTF-8 at runtime); only binaries go to the assets folder.
+			// `.gitignore` and `.npmrc` must be embedded too, as npm strips
+			// dotfiles like these when publishing.
+			} else if (name === '.gitignore' || name === '.npmrc' || /\.(js|cjs|mjs|json|md|html|css|txt)$/.test(name)) {
 				shared.push({ name, contents: fs.readFileSync(path.join(cwd, name), 'utf8') });
 			} else {
 				saveAsset({ from: path.join(cwd, name), assetsDir: assets, name });
