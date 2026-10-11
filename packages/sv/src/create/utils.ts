@@ -93,9 +93,15 @@ export function copyAsset({
 }
 
 export function dist(currentPath: string): string {
-	// we need to make this check, because vitest is making the package root the cwd,
-	// but executing the cli from the command line already makes the dist folder the cwd.
-	const insideDistFolder = import.meta.url.includes('dist');
+	// Templates and addon content (`ai-tools.json`, `playground.json`) are build
+	// outputs colocated with the bundle.
+	// Dev-time (vitest, source execution): the module runs from `src/create`,
+	// so assets live in the `dist/` child dir (`src/create/dist/...`).
+	// Run-time (published CLI): the module already runs from inside `dist/`
+	// (e.g. `dist/engine-*.mjs`), so assets are siblings, no extra segment.
+	// Check for a `dist` path segment — a substring match would false-positive
+	// on names like `odist`.
+	const insideDistFolder = import.meta.url.split('/').includes('dist');
 
 	return path.resolve(import.meta.dirname, insideDistFolder ? '' : 'dist', currentPath);
 }
