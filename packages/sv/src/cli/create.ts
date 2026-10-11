@@ -6,6 +6,7 @@ import { color, resolveCommandArray } from '@sveltejs/sv-utils';
 import { Command, Option } from 'commander';
 import * as v from 'valibot';
 import { getAddonDetails } from '../addons/index.ts';
+import { preparePlayground, validatePlaygroundUrl } from '../addons/playground.ts';
 import * as common from '../core/common.ts';
 import {
 	createLoadedAddon,
@@ -29,10 +30,6 @@ import {
 	create as createKit,
 	templates
 } from '../create/index.ts';
-import {
-	preparePlayground,
-	validatePlaygroundUrl
-} from '../addons/playground.ts';
 import { dist } from '../create/utils.ts';
 import {
 	addonArgsHandler,
