@@ -1,8 +1,8 @@
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
+import { buildAddonContent } from './packages/sv/src/addons/build-content.js';
 import { buildTemplates } from './packages/sv/src/create/scripts/build-templates.js';
-import { buildAiTools } from './packages/sv/src/addons/build-ai-tools.js';
 
 /**
  * Throwaway output dir for the single-entry DTS builds that feed
@@ -201,8 +201,8 @@ export async function buildCliTemplates() {
 	const start = performance.now();
 	await buildTemplates(path.resolve('packages/sv/dist'));
 	await buildTemplates(path.resolve('packages/sv/src/create/dist'));
-	await buildAiTools(path.resolve('packages/sv/dist'));
-	await buildAiTools(path.resolve('packages/sv/src/create/dist'));
+	buildAddonContent(path.resolve('packages/sv/dist'));
+	buildAddonContent(path.resolve('packages/sv/src/create/dist'));
 	const [green, reset] = ['\x1b[32m', '\x1b[0m'];
 	console.log(`${green}✔${reset} Templates built in ${Math.round(performance.now() - start)}ms`);
 }
