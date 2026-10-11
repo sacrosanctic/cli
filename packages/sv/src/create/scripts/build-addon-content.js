@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const addonsDir = import.meta.dirname;
+const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
 /**
  * Bundle every addon content folder (any directory inside `src/addons/`,

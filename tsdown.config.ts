@@ -1,7 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
-import { buildAddonContent } from './packages/sv/src/addons/build-content.js';
+import { buildAddonContent } from './packages/sv/src/create/scripts/build-addon-content.js';
 import { buildTemplates } from './packages/sv/src/create/scripts/build-templates.js';
 
 /**
