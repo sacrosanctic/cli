@@ -5,7 +5,7 @@ import parser from 'gitignore-parser';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
-import { mkdirp } from '../utils.ts';
+import { copyAsset, listFiles, mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
@@ -110,11 +110,7 @@ async function generate_templates(dist) {
 			none: []
 		};
 
-		const files = fs
-			.readdirSync(cwd, { recursive: true, withFileTypes: true })
-			.filter((entry) => entry.isFile())
-			.map(({ parentPath, name }) => path.join(path.relative(cwd, parentPath), name))
-			.sort();
+		const files = listFiles(cwd);
 		for (const name of files) {
 			// Every file in the template folder is user-facing, except
 			// build-time inputs: `.meta.json` (picker text, handled above),
@@ -247,9 +243,7 @@ async function generate_templates(dist) {
 					});
 				}
 			} else {
-				const dest = path.join(assets, name.replace(/^\./, 'DOT-'));
-				mkdirp(path.dirname(dest));
-				fs.copyFileSync(path.join(cwd, name), dest);
+				copyAsset({ from: path.join(cwd, name), assetsDir: assets, name });
 			}
 		}
 
@@ -310,11 +304,7 @@ function generate_vite_template(dist) {
 		const createVitePackageJson = fileURLToPath(import.meta.resolve('create-vite/package.json'));
 		const createVitePath = path.dirname(createVitePackageJson);
 		const srcDir = path.join(createVitePath, src);
-		const files = fs
-			.readdirSync(srcDir, { recursive: true, withFileTypes: true })
-			.filter((entry) => entry.isFile())
-			.map(({ parentPath, name }) => path.join(path.relative(srcDir, parentPath), name))
-			.sort();
+		const files = listFiles(srcDir);
 
 		for (const name of files) {
 			const srcPath = path.join(srcDir, name);
@@ -322,17 +312,14 @@ function generate_vite_template(dist) {
 
 			// Handle _gitignore -> .gitignore rename (asset file)
 			if (name === '_gitignore' && lang === 'none') {
-				const dest = path.join(assets, 'DOT-gitignore');
-				fs.copyFileSync(srcPath, dest);
+				copyAsset({ from: srcPath, assetsDir: assets, name, destName: '.gitignore' });
 				continue;
 			}
 			if (name === '_gitignore') continue;
 
 			// Binary/asset files go to assets folder (only process once for 'none' variant)
 			if (lang === 'none' && !/\.(js|ts|svelte|json|html|css|md)$/i.test(name)) {
-				const dest = path.join(assets, name.replace(/^\./, 'DOT-'));
-				mkdirp(path.dirname(dest));
-				fs.copyFileSync(srcPath, dest);
+				copyAsset({ from: srcPath, assetsDir: assets, name });
 				continue;
 			}
 

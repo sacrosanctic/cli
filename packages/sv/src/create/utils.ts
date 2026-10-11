@@ -56,6 +56,42 @@ export function copy(
 	}
 }
 
+/**
+ * List all files under `cwd` (recursive) as sorted paths relative to `cwd`.
+ * Shared by the build scripts (`build-templates.js`, `build-addon-content.js`)
+ * so templates, the vite template, and addons enumerate source files identically.
+ */
+export function listFiles(cwd: string): string[] {
+	return fs
+		.readdirSync(cwd, { recursive: true, withFileTypes: true })
+		.filter((entry) => entry.isFile())
+		.map(({ parentPath, name }) => path.join(path.relative(cwd, parentPath), name))
+		.sort();
+}
+
+/**
+ * Copy a single asset file verbatim into an `assets` output dir, prefixing
+ * leading-dot names with `DOT-` so dotfiles survive publishing. Runtime
+ * renames them back via `copy()`. Shared by template and addon builds so all
+ * three emit assets with the same logic.
+ */
+export function copyAsset({
+	from,
+	assetsDir,
+	name,
+	destName
+}: {
+	from: string;
+	assetsDir: string;
+	name: string;
+	destName?: string;
+}): string {
+	const dest = path.join(assetsDir, (destName ?? name).replace(/^\./, 'DOT-'));
+	mkdirp(path.dirname(dest));
+	fs.copyFileSync(from, dest);
+	return dest;
+}
+
 export function dist(currentPath: string): string {
 	// we need to make this check, because vitest is making the package root the cwd,
 	// but executing the cli from the command line already makes the dist folder the cwd.

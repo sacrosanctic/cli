@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { mkdirp } from '../utils.ts';
+import { copyAsset, listFiles, mkdirp } from '../utils.ts';
 
 const addonsDir = path.resolve(import.meta.dirname, '../../addons');
 
@@ -11,11 +11,11 @@ const addonsDir = path.resolve(import.meta.dirname, '../../addons');
  * `create` never sees them.
  *
  * Files under `<folder>/assets/` are treated exactly like template assets
- * (see `src/create/scripts/build-templates.js`): they are copied verbatim
- * with `fs.copyFileSync` to `<dist>/<folder>/assets/` instead of being
- * encoded as UTF-8 text into the JSON manifest, so binary files (images,
- * fonts, etc.) survive the build. At runtime, addons copy them out with the
- * shared `copy()` helper from `src/create/utils.ts`, just like templates do.
+ * (shared `copyAsset` helper in `src/create/utils.ts`): they are copied
+ * verbatim to `<dist>/<folder>/assets/` instead of being encoded as UTF-8
+ * text into the JSON manifest, so binary files (images, fonts, etc.) survive
+ * the build. At runtime, addons copy them out with the shared `copy()`
+ * helper from `src/create/utils.ts`, just like templates do.
  * @param {string} dist
  */
 export function buildAddonContent(dist) {
@@ -35,27 +35,24 @@ export function buildAddonContent(dist) {
 	for (const folder of folders) {
 		const contentDir = path.join(addonsDir, folder);
 
-		const names = fs
-			.readdirSync(contentDir, { recursive: true, withFileTypes: true })
-			.filter((entry) => entry.isFile())
-			.map(({ parentPath, name }) => path.join(path.relative(contentDir, parentPath), name))
-			.sort();
+		const names = listFiles(contentDir);
 
 		const files = [];
 		for (const name of names) {
 			if (name === 'assets' || name.startsWith(`assets${path.sep}`)) {
 				// Same as templates: verbatim copy, `DOT-` prefix so dotfiles
 				// survive publishing. Runtime renames back via `copy()`.
-				const rel = path.relative('assets', name);
-				const dest = path.join(dist, folder, 'assets', rel.replace(/^\./, 'DOT-'));
-				mkdirp(path.dirname(dest));
-				fs.copyFileSync(path.join(contentDir, name), dest);
+				copyAsset({
+					from: path.join(contentDir, name),
+					assetsDir: path.join(dist, folder, 'assets'),
+					name: path.relative('assets', name)
+				});
 				continue;
 			}
 			files.push({ name, contents: fs.readFileSync(path.join(contentDir, name), 'utf8') });
 		}
 
-		fs.mkdirSync(dist, { recursive: true });
+		mkdirp(dist);
 		fs.writeFileSync(path.join(dist, `${folder}.json`), JSON.stringify({ files }, null, '\t'));
 	}
 }
