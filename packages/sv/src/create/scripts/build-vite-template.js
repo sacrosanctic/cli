@@ -70,12 +70,10 @@ export function build_vite_template(dist) {
 	// identical files across every used language variant belong in
 	// `files.shared.json` instead of being duplicated per variant
 	const variantLangs = /** @type {LanguageType[]} */ (['typescript', 'none']);
-	for (const name of new Set(
-		[...types.typescript, ...types.none].map((file) => file.name)
-	)) {
+	for (const name of new Set([...types.typescript, ...types.none].map((file) => file.name))) {
 		const entries = variantLangs.map((lang) => types[lang].find((file) => file.name === name));
 		const contents = entries[0]?.contents;
-		if (!entries.every((entry) => entry?.contents === contents)) continue;
+		if (contents === undefined || !entries.every((entry) => entry?.contents === contents)) continue;
 		shared.push({ name, contents });
 		for (const lang of variantLangs) {
 			types[lang] = types[lang].filter((file) => file.name !== name);
