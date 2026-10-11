@@ -33,7 +33,7 @@ export function kv(name: string): Record<string, string> {
 // files that have kv's in the contents that we replace
 const withReplaceExtensions = ['.md', '.js', '.ts', '.json'];
 
-export function copy(
+function copy(
 	from: string,
 	to: string,
 	rename: (basename: string) => string = identity,
@@ -72,7 +72,7 @@ export function listFiles(cwd: string): string[] {
 /**
  * Copy a single asset file verbatim into an `assets` output dir, prefixing
  * leading-dot names with `DOT-` so dotfiles survive publishing. Runtime
- * renames them back via `copy()`. Shared by template and addon builds so all
+ * renames them back via `copyAssets()`. Shared by template and addon builds so all
  * three emit assets with the same logic.
  */
 export function copyAsset({
@@ -90,6 +90,10 @@ export function copyAsset({
 	mkdirp(path.dirname(dest));
 	fs.copyFileSync(from, dest);
 	return dest;
+}
+
+export function copyAssets(from: string, to: string, name: string): void {
+	copy(from, to, (file: string) => file.replace('DOT-', '.'), kv(name));
 }
 
 export function dist(currentPath: string): string {

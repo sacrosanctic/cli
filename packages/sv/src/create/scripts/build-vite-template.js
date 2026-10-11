@@ -38,7 +38,9 @@ export function build_vite_template(dist) {
 			const srcPath = path.join(srcDir, name);
 			const contents = fs.readFileSync(srcPath, 'utf8');
 
-			// Handle _gitignore -> .gitignore rename (asset file)
+			// create-vite templates keep the `_gitignore` convention (npm strips
+			// `.gitignore` from published packages); emit it as the user-facing
+			// `.gitignore` asset (`copyAsset` prefixes `DOT-`)
 			if (name === '_gitignore' && lang === 'none') {
 				copyAsset({ from: srcPath, assetsDir: assets, name, destName: '.gitignore' });
 				continue;
@@ -65,7 +67,11 @@ export function build_vite_template(dist) {
 	// Write meta.json (internal template, minimal metadata)
 	fs.writeFileSync(
 		path.join(dir, 'meta.json'),
-		JSON.stringify({ title: 'Svelte', description: 'Vite + Svelte template (internal)' }, null, '\t')
+		JSON.stringify(
+			{ title: 'Svelte', description: 'Vite + Svelte template (internal)' },
+			null,
+			'\t'
+		)
 	);
 
 	// Write files for each language type
