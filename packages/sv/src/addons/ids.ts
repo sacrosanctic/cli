@@ -16,8 +16,7 @@ export const ADDON_IDS = {
 	paraglide: 'paraglide',
 	storybook: 'storybook',
 	aiTools: 'ai-tools',
-	experimental: 'experimental',
-	playground: 'playground'
+	experimental: 'experimental'
 } as const;
 
 export type OfficialAddonId = (typeof ADDON_IDS)[keyof typeof ADDON_IDS];

@@ -12,7 +12,6 @@ import {
 import { type Addon, defineAddon, defineAddonOptions } from '../core/config.ts';
 import type { AddonOptions } from '../core/options.ts';
 import { dist } from '../create/utils.ts';
-import { ADDON_IDS } from './ids.ts';
 
 // ============================================================================
 // Pure playground logic (no filesystem, no workspace). Also imported by
@@ -241,7 +240,7 @@ function renderPlaygroundLayout(contents: string, name: string, url: string): st
 }
 
 const addon: Addon<AddonOptions<PlaygroundOptions>, 'playground'> = defineAddon({
-	id: ADDON_IDS.playground,
+	id: 'playground',
 	shortDescription: 'scaffold from a svelte playground',
 	homepage: 'https://svelte.dev/playground',
 	hidden: true,

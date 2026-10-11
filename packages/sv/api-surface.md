@@ -27,7 +27,6 @@ declare const ADDON_IDS: {
 	readonly storybook: 'storybook';
 	readonly aiTools: 'ai-tools';
 	readonly experimental: 'experimental';
-	readonly playground: 'playground';
 };
 type OfficialAddonId = (typeof ADDON_IDS)[keyof typeof ADDON_IDS];
 type BooleanQuestion = {
@@ -349,10 +348,6 @@ type ParaglideOptions = {
 	languageTags: string;
 	demo: boolean;
 };
-type PlaygroundOptions = {
-	url: string;
-	installDeps: boolean;
-};
 type PlaywrightOptions = {
 	demo: boolean;
 };
@@ -423,7 +418,6 @@ type OfficialAddons = {
 	[ADDON_IDS.storybook]: Addon<NoOptions, typeof ADDON_IDS.storybook>;
 	[ADDON_IDS.aiTools]: Addon<AddonOptions<AiToolsOptions>, typeof ADDON_IDS.aiTools>;
 	[ADDON_IDS.experimental]: Addon<AddonOptions<ExperimentalOptions>, typeof ADDON_IDS.experimental>;
-	[ADDON_IDS.playground]: Addon<AddonOptions<PlaygroundOptions>, typeof ADDON_IDS.playground>;
 };
 type OfficialAddonOptions = OptionMap<OfficialAddons>;
 export declare const officialAddons: OfficialAddons;

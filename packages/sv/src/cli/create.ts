@@ -6,7 +6,7 @@ import { color, resolveCommandArray } from '@sveltejs/sv-utils';
 import { Command, Option } from 'commander';
 import * as v from 'valibot';
 import { getAddonDetails } from '../addons/index.ts';
-import { preparePlayground, validatePlaygroundUrl } from '../addons/playground.ts';
+import playground, { preparePlayground, validatePlaygroundUrl } from '../addons/playground.ts';
 import * as common from '../core/common.ts';
 import {
 	createLoadedAddon,
@@ -443,7 +443,7 @@ async function createProjectFromPlayground(
 	const { dependencies } = await preparePlayground(url);
 	const installDeps = await confirmExternalDependencies(Array.from(dependencies.keys()));
 
-	loadedAddons.unshift(createLoadedAddon(getAddonDetails('playground')));
+	loadedAddons.unshift(createLoadedAddon(playground));
 	answers['playground'] = { url, installDeps };
 }
 

@@ -10,7 +10,6 @@ import experimental, { type ExperimentalOptions } from './experimental.ts';
 import { ADDON_IDS, type OfficialAddonId } from './ids.ts';
 import mdsvex from './mdsvex.ts';
 import paraglide, { type ParaglideOptions } from './paraglide.ts';
-import playground, { type PlaygroundOptions } from './playground.ts';
 import playwright, { type PlaywrightOptions } from './playwright.ts';
 import prettier from './prettier.ts';
 import storybook from './storybook.ts';
@@ -41,7 +40,6 @@ export type OfficialAddons = {
 	[ADDON_IDS.storybook]: Addon<NoOptions, typeof ADDON_IDS.storybook>;
 	[ADDON_IDS.aiTools]: Addon<AddonOptions<AiToolsOptions>, typeof ADDON_IDS.aiTools>;
 	[ADDON_IDS.experimental]: Addon<AddonOptions<ExperimentalOptions>, typeof ADDON_IDS.experimental>;
-	[ADDON_IDS.playground]: Addon<AddonOptions<PlaygroundOptions>, typeof ADDON_IDS.playground>;
 };
 
 /** What `add()` accepts as `options` for official add-ons, keyed by add-on id. */
@@ -63,8 +61,7 @@ export const officialAddons: OfficialAddons = {
 	[ADDON_IDS.paraglide]: paraglide,
 	[ADDON_IDS.storybook]: storybook,
 	[ADDON_IDS.aiTools]: aiTools,
-	[ADDON_IDS.experimental]: experimental,
-	[ADDON_IDS.playground]: playground
+	[ADDON_IDS.experimental]: experimental
 };
 
 export function getAddonDetails(id: string): AddonDefinition {
