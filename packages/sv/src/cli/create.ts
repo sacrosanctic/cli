@@ -497,7 +497,7 @@ export async function createVirtualWorkspace({
 	}
 
 	// Let's read the package.json of the template we will use and add the dependencies to the override
-	const templatePackageJsonPath = dist(`templates/${template}`);
+	const templatePackageJsonPath = dist(path.join('templates', template, type));
 	const { data: packageJson } = loadPackageJson(templatePackageJsonPath);
 	override.dependencies = {
 		...packageJson.devDependencies,
