@@ -1,6 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as walk from 'empathic/walk';
 import { isNodeError } from '../core/common.ts';
+
+// directory containing `package.json` — works whether the code is run from
+// source, bundled into `dist/`, or consumed from `node_modules` by a template
+export const pkg_root = (() => {
+	const dir = walk
+		.up(path.dirname(fileURLToPath(import.meta.url)))
+		.find((dir) => fs.existsSync(path.join(dir, 'package.json')));
+	if (!dir) throw new Error('could not locate package.json');
+	return dir;
+})();
 
 export function mkdirp(dir: string): void {
 	try {
@@ -94,12 +106,4 @@ export function saveAsset({
 
 export function fetchAssets(from: string, to: string, name: string): void {
 	copy(from, to, (file: string) => file.replace('DOT-', '.'), kv(name));
-}
-
-export function dist(currentPath: string): string {
-	// we need to make this check, because vitest is making the package root the cwd,
-	// but executing the cli from the command line already makes the dist folder the cwd.
-	const insideDistFolder = import.meta.url.split('/').includes('dist');
-
-	return path.resolve(import.meta.dirname, insideDistFolder ? '' : 'dist', currentPath);
 }

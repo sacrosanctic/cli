@@ -202,20 +202,14 @@ export default defineConfig([
 export async function buildCliTemplates() {
 	const start = performance.now();
 
-	const dists = [
-		// where the bundled CLI resolves templates/addons at runtime
-		path.resolve('packages/sv/dist'),
-		// where `dist()` in `src/create/utils.ts` resolves them when running
-		// from source (dev/vitest, `import.meta.url` doesn't include `dist`)
-		path.resolve('packages/sv/src/create/dist')
-	];
-	for (const dist of dists) {
-		mkdirp(dist);
+	// where the runtime code — bundled CLI, published package and plain
+	// source/vitest runs alike — resolves templates/addons via `pkg_root`
+	const out = path.resolve('packages/sv/dist');
+	mkdirp(out);
 
-		await build_kit_template(dist);
-		build_vite_template(dist);
-		buildAddonContent(dist);
-	}
+	await build_kit_template(out);
+	build_vite_template(out);
+	buildAddonContent(out);
 
 	const [green, reset] = ['\x1b[32m', '\x1b[0m'];
 	console.log(`${green}✔${reset} Templates built in ${Math.round(performance.now() - start)}ms`);

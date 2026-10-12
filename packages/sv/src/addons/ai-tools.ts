@@ -4,7 +4,7 @@ import { log } from '@clack/prompts';
 import { color, transforms } from '@sveltejs/sv-utils';
 import { type Addon, defineAddon, defineAddonOptions } from '../core/config.ts';
 import type { AddonOptions } from '../core/options.ts';
-import { dist } from '../create/utils.ts';
+import { pkg_root } from '../create/utils.ts';
 import { ADDON_IDS } from './ids.ts';
 
 const REGEX_MD = /\.md$/;
@@ -213,7 +213,7 @@ const addon: Addon<AddonOptions<AiToolsOptions>, 'ai-tools'> = defineAddon({
 		const filesExistingAlready: string[] = [];
 
 		const { files } = JSON.parse(
-			fs.readFileSync(dist(path.join('addons', 'ai-tools.json')), 'utf-8')
+			fs.readFileSync(path.join(pkg_root, 'dist', 'addons', 'ai-tools.json'), 'utf-8')
 		) as {
 			files: Array<{ name: string; contents: string }>;
 		};

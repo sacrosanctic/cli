@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeName } from '@sveltejs/sv-utils';
 import { filePaths, type PackageJSON } from '../core/common.ts';
-import { mkdirp, fetchAssets, dist, replace, kv } from './utils.ts';
+import { mkdirp, fetchAssets, pkg_root, replace, kv } from './utils.ts';
 
 export type TemplateType = 'minimal' | 'demo' | 'library' | 'addon' | 'svelte';
 export type LanguageType = 'typescript' | 'checkjs' | 'none';
@@ -29,7 +29,7 @@ export function create({ cwd, ...options }: Options): void {
 
 export type TemplateMetadata = { name: TemplateType; title: string; description: string };
 export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
-	const meta_file = dist(`templates/${dir}/meta.json`);
+	const meta_file = path.join(pkg_root, 'dist', 'templates', dir, 'meta.json');
 	const { title, description } = JSON.parse(fs.readFileSync(meta_file, 'utf8'));
 
 	return {
@@ -40,7 +40,7 @@ export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
 });
 
 function write_template_files(template: string, types: LanguageType, name: string, cwd: string) {
-	const dir = dist(`templates/${template}`);
+	const dir = path.join(pkg_root, 'dist', 'templates', template);
 	fetchAssets(`${dir}/assets`, cwd, name);
 
 	// `package.json` ships as a regular entry of the files manifest, so there

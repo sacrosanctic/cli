@@ -12,7 +12,7 @@ import {
 } from '@sveltejs/sv-utils';
 import { type Addon, defineAddon, defineAddonOptions } from '../core/config.ts';
 import type { AddonOptions } from '../core/options.ts';
-import { dist } from '../create/utils.ts';
+import { pkg_root } from '../create/utils.ts';
 
 // ============================================================================
 // Pure playground logic (no filesystem, no workspace). Also imported by
@@ -263,7 +263,7 @@ const addon: Addon<AddonOptions<PlaygroundOptions>, 'playground'> = defineAddon(
 
 		// add playground shared files
 		const { files } = JSON.parse(
-			fs.readFileSync(dist(path.join('addons', 'playground.json')), 'utf-8')
+			fs.readFileSync(path.join(pkg_root, 'dist', 'addons', 'playground.json'), 'utf-8')
 		) as {
 			files: Array<{ name: string; contents: string }>;
 		};

@@ -30,7 +30,7 @@ import {
 	create as createKit,
 	templates
 } from '../create/index.ts';
-import { dist } from '../create/utils.ts';
+import { pkg_root } from '../create/utils.ts';
 import {
 	addonArgsHandler,
 	classifyAddons,
@@ -496,12 +496,22 @@ export async function createVirtualWorkspace({
 
 	// Let's read the package.json of the template we will use and add the dependencies to the override.
 	// It ships as a regular entry of the template's files manifest.
-	const manifestPath = dist(path.join('templates', template, `files.types=${type}.json`));
-	const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Array<{
+	const dir = path.join(pkg_root, 'dist', 'templates', template);
+	let files = JSON.parse(
+		fs.readFileSync(path.join(dir, `files.types=${type}.json`), 'utf-8')
+	) as Array<{
 		name: string;
 		contents: string;
 	}>;
-	const packageJson = JSON.parse(manifest.find((file) => file.name === 'package.json')!.contents);
+
+	// files identical across every language variant live in `files.shared.json`
+	const sharedPath = path.join(dir, 'files.shared.json');
+	if (fs.existsSync(sharedPath)) {
+		const shared = JSON.parse(fs.readFileSync(sharedPath, 'utf-8')) as typeof files;
+		files = [...shared, ...files];
+	}
+
+	const packageJson = JSON.parse(files.find((file) => file.name === 'package.json')!.contents);
 	override.dependencies = {
 		...packageJson.devDependencies,
 		...packageJson.dependencies,
