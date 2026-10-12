@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as walk from 'empathic/walk';
+import { transform } from 'sucrase';
 import { isNodeError } from '../core/common.ts';
 
 // directory containing `package.json` — works whether the code is run from
@@ -106,4 +107,34 @@ export function saveAsset({
 
 export function fetchAssets(from: string, to: string, name: string): void {
 	copy(from, to, (file: string) => file.replace('DOT-', '.'), kv(name));
+}
+
+export function strip_typescript(content: string) {
+	const { code } = transform(content, {
+		transforms: ['typescript'],
+		disableESTransforms: true
+	});
+
+	const result = code
+		// sucrase leaves invalid class fields intact
+		.replace(/^\s*[a-z]+;$/gm, '')
+		// Replace "local import" that ends with ".ts" to ".js"
+		.replace(/import (.+?) from ['"](.+?)\.ts['"]/g, 'import $1 from "$2.js"');
+
+	return result;
+}
+
+export function strip_jsdoc(content: string) {
+	return content
+		.replace(/ \/\*\*\*\//g, '')
+		.replace(
+			/\/\*\*([\s\S]+?)(@[\s\S]+?)?\*\/([\s\n]+)/g,
+			(match, description, tags, whitespace) => {
+				if (/^\s+(\*\s*)?$/.test(description)) {
+					return '';
+				}
+
+				return `/**${description.replace(/\* $/, '')}*/${whitespace}`;
+			}
+		);
 }

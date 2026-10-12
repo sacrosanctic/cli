@@ -4,7 +4,7 @@ import * as find from 'empathic/find';
 import { format } from 'oxfmt';
 import { transform } from 'sucrase';
 import oxfmtConfig from '../../../../../oxfmt.config.ts';
-import { saveAsset, listFiles, mkdirp } from '../utils.ts';
+import { saveAsset, listFiles, mkdirp, strip_jsdoc, strip_typescript } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
 
@@ -14,40 +14,6 @@ if (!pnpmWorkspace) {
 }
 const ROOT = path.dirname(pnpmWorkspace);
 const pkgRoot = path.resolve(import.meta.dirname, '..');
-
-/** @param {string} content */
-async function strip_typescript(content) {
-	let { code } = transform(content, {
-		transforms: ['typescript'],
-		disableESTransforms: true
-	});
-
-	// sucrase leaves invalid class fields intact
-	code = code.replace(/^\s*[a-z]+;$/gm, '');
-
-	// Replace "local import" that ends with ".ts" to ".js"
-	code = code.replace(/import (.+?) from ['"](.+?)\.ts['"]/g, 'import $1 from "$2.js"');
-
-	const result = await format('file.js', code, oxfmtConfig);
-
-	return result.code;
-}
-
-/** @param {string} content */
-function strip_jsdoc(content) {
-	return content
-		.replace(/ \/\*\*\*\//g, '')
-		.replace(
-			/\/\*\*([\s\S]+?)(@[\s\S]+?)?\*\/([\s\n]+)/g,
-			(match, description, tags, whitespace) => {
-				if (/^\s+(\*\s*)?$/.test(description)) {
-					return '';
-				}
-
-				return `/**${description.replace(/\* $/, '')}*/${whitespace}`;
-			}
-		);
-}
 
 /**
  * Derive the per-language `package.json` variants from the template's
@@ -185,7 +151,7 @@ export async function build_kit_template(dist) {
 					if (name.endsWith('app.d.ts')) types.checkjs.push({ name, contents });
 					types.typescript.push({ name, contents });
 				} else if (name.endsWith('.ts')) {
-					const js = await strip_typescript(contents);
+					const { code: js } = await format('file.js', strip_typescript(contents), oxfmtConfig);
 
 					types.typescript.push({
 						name,
