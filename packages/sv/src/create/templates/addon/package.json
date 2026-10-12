@@ -1,18 +1,17 @@
 {
 	"name": "$SV-NAME-TODO$",
-	"description": "sv add-on for $SV-NAME-TODO$",
 	"version": "0.0.1",
-	"type": "module",
+	"description": "sv add-on for $SV-NAME-TODO$",
+	"keywords": [
+		"sv-add",
+		"svelte",
+		"sveltekit"
+	],
 	"license": "MIT",
-	"scripts": {
-		"demo-create": "sv create demo --types ts --template minimal --no-add-ons --no-install",
-		"demo-add": "pnpm build && sv add file:../ --cwd demo --no-git-check --no-install",
-		"demo-add:ci": "pnpm build && sv add file:../=who:you --cwd demo --no-git-check --no-download-check --no-install",
-		"build": "tsdown",
-		"prepublishOnly": "npm run build",
-		"test": "vitest run"
-	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
+	"type": "module",
 	"exports": {
 		".": {
 			"default": "./dist/index.mjs"
@@ -21,16 +20,23 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"peerDependencies": {
-		"sv": "workspace:*"
+	"scripts": {
+		"demo-create": "sv create demo --types ts --template minimal --no-add-ons --no-install",
+		"demo-add": "pnpm build && sv add file:../ --cwd demo --no-git-check --no-install",
+		"demo-add:ci": "pnpm build && sv add file:../=who:you --cwd demo --no-git-check --no-download-check --no-install",
+		"build": "tsdown",
+		"prepublishOnly": "npm run build",
+		"test": "vitest run"
 	},
 	"devDependencies": {
-		"sv": "workspace:*",
-		"@sveltejs/sv-utils": "workspace:*",
 		"@playwright/test": "^1.60.0",
+		"@sveltejs/sv-utils": "workspace:*",
 		"@types/node": "^25.9.1",
+		"sv": "workspace:*",
 		"tsdown": "^0.22.1",
 		"vitest": "^4.1.8"
 	},
-	"keywords": ["sv-add", "svelte", "sveltekit"]
+	"peerDependencies": {
+		"sv": "workspace:*"
+	}
 }
