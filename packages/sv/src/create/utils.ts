@@ -42,16 +42,15 @@ export function copy(
 	rename: (basename: string) => string = identity
 ): void {
 	if (!fs.existsSync(from)) return;
-	const stats = fs.statSync(from);
-
-	if (stats.isDirectory()) {
-		fs.readdirSync(from).forEach((file) => {
-			copy(path.join(from, file), path.join(to, rename(file)), rename);
-		});
-	} else {
+	if (fs.statSync(from).isFile()) {
 		mkdirp(path.dirname(to));
 		fs.copyFileSync(from, to);
+		return;
 	}
+
+	fs.readdirSync(from).forEach((file) => {
+		copy(path.join(from, file), path.join(to, rename(file)), rename);
+	});
 }
 
 /**

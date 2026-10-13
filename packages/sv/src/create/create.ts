@@ -5,7 +5,7 @@ import * as v from 'valibot';
 import { filePaths, type PackageJSON } from '../core/common.ts';
 import { FileSchema } from './contract.ts';
 import type { LanguageType, TemplateType } from './templates.ts';
-import { mkdirp, pkg_root, invalid_json, copy } from './utils.ts';
+import { mkdirp, pkg_root, invalid_json, copy, replace } from './utils.ts';
 
 export type Options = { cwd: string; name: string; template: TemplateType; types: LanguageType };
 /**
@@ -20,19 +20,19 @@ export function create({ cwd, name: project_name, template, types }: Options): v
 	const typed_file_path = `${template_path}/files.types=${types}.json`;
 	const shared_file_path = `${template_path}/files.shared.json`;
 
-	const typed_file_result = v.safeParse(
+	const typed_result = v.safeParse(
 		v.pipe(v.string(), v.parseJson(), v.array(FileSchema)),
 		fs.readFileSync(typed_file_path, 'utf-8')
 	);
-	if (!typed_file_result.success) throw invalid_json(typed_file_path, typed_file_result.issues);
+	if (!typed_result.success) throw invalid_json(typed_file_path, typed_result.issues);
 
-	const shared_file_result = v.safeParse(
+	const shared_result = v.safeParse(
 		v.pipe(v.string(), v.parseJson(), v.array(FileSchema)),
 		fs.readFileSync(shared_file_path, 'utf-8')
 	);
-	if (!shared_file_result.success) throw invalid_json(shared_file_path, shared_file_result.issues);
+	if (!shared_result.success) throw invalid_json(shared_file_path, shared_result.issues);
 
-	const files = [...shared_file_result.output, ...typed_file_result.output];
+	const files = [...shared_result.output, ...typed_result.output];
 
 	files.forEach((file) => {
 		const dest = path.join(cwd, file.name);
