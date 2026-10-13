@@ -40,22 +40,19 @@ export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
 });
 
 function write_template_files(template: string, types: LanguageType, name: string, cwd: string) {
-	const dir = path.join(pkg_root, 'dist', 'templates', template);
-	fetchAssets(`${dir}/assets`, cwd, name);
+	const template_dir = path.join(pkg_root, 'dist', 'templates', template);
+	fetchAssets(`${template_dir}/assets`, cwd, name);
 
 	// `package.json` ships as a regular entry of the files manifest, so there
 	// is nothing else to copy here. (The internal-only `svelte` template has
 	// no `package.json` entry, hence the `existsSync` guard below.)
-	const manifest = `${dir}/files.types=${types}.json`;
-	let files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+	const manifest = `${template_dir}/files.types=${types}.json`;
+	const shared_path = `${template_dir}/files.shared.json`;
 
-	// text files shared by every language variant ride along in
-	// `files.shared.json` when it exists
-	const shared_path = `${dir}/files.shared.json`;
-	if (fs.existsSync(shared_path)) {
-		const shared = JSON.parse(fs.readFileSync(shared_path, 'utf-8')) as File[];
-		files = [...shared, ...files];
-	}
+	let files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+	const shared = JSON.parse(fs.readFileSync(shared_path, 'utf-8')) as File[];
+
+	files = [...shared, ...files];
 
 	files.forEach((file) => {
 		const dest = path.join(cwd, file.name);
