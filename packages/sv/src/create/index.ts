@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeName } from '@sveltejs/sv-utils';
 import * as v from 'valibot';
-import { filePaths, type PackageJSON } from '../core/common.ts';
+import { filePaths, PackageJSONSchema } from '../core/common.ts';
 import { mkdirp, fetchAssets, pkg_root, replace, kv } from './utils.ts';
 
 export type TemplateType = 'minimal' | 'demo' | 'library' | 'addon' | 'svelte';
@@ -17,10 +17,19 @@ export type Options = {
 	types: LanguageType;
 };
 
-export type File = {
-	name: string;
-	contents: string;
-};
+export const FileSchema = v.object({
+	name: v.string(),
+	contents: v.string()
+});
+export type File = v.InferOutput<typeof FileSchema>;
+
+const FilesSchema = v.pipe(v.string(), v.parseJson(), v.array(FileSchema));
+
+const TemplateMetaSchema = v.pipe(
+	v.string(),
+	v.parseJson(),
+	v.object({ title: v.string(), description: v.string() })
+);
 
 export function create({ cwd, ...options }: Options): void {
 	mkdirp(cwd);
@@ -31,7 +40,7 @@ export function create({ cwd, ...options }: Options): void {
 type TemplateMetadata = { name: TemplateType; title: string; description: string };
 export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
 	const meta_file = path.join(pkg_root, 'dist', 'templates', dir, 'meta.json');
-	const { title, description } = JSON.parse(fs.readFileSync(meta_file, 'utf8'));
+	const { title, description } = v.parse(TemplateMetaSchema, fs.readFileSync(meta_file, 'utf8'));
 
 	return {
 		name: dir,
@@ -47,8 +56,8 @@ function write_template_files(template: string, types: LanguageType, name: strin
 	const manifest = `${template_dir}/files.types=${types}.json`;
 	const shared_path = `${template_dir}/files.shared.json`;
 
-	let files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
-	const shared = JSON.parse(fs.readFileSync(shared_path, 'utf-8')) as File[];
+	let files = v.parse(FilesSchema, fs.readFileSync(manifest, 'utf-8'));
+	const shared = v.parse(FilesSchema, fs.readFileSync(shared_path, 'utf-8'));
 
 	files = [...shared, ...files];
 
@@ -60,7 +69,10 @@ function write_template_files(template: string, types: LanguageType, name: strin
 
 	const pkg_file = path.join(cwd, filePaths.packageJson);
 	if (fs.existsSync(pkg_file)) {
-		const pkg: PackageJSON = JSON.parse(fs.readFileSync(pkg_file, 'utf-8'));
+		const pkg = v.parse(
+			v.pipe(v.string(), v.parseJson(), PackageJSONSchema),
+			fs.readFileSync(pkg_file, 'utf-8')
+		);
 
 		pkg.dependencies = sort_keys(pkg.dependencies);
 		pkg.devDependencies = sort_keys(pkg.devDependencies);
