@@ -1,9 +1,9 @@
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
-import { build_addon_content } from './packages/sv/src/create/build_scripts/addon-template.js';
-import { build_kit_template } from './packages/sv/src/create/build_scripts/kit-template.js';
-import { build_vite_template } from './packages/sv/src/create/build_scripts/vite-template.js';
+import { build_addon_content } from './packages/sv/src/create/scripts/build-addon-template.js';
+import { build_kit_template } from './packages/sv/src/create/scripts/build-kit-template.js';
+import { build_vite_template } from './packages/sv/src/create/scripts/build-vite-template.js';
 import { mkdirp } from './packages/sv/src/create/utils.ts';
 
 /**
