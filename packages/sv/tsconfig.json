@@ -1,6 +1,13 @@
 {
 	"extends": "../../tsconfig.json",
-	"include": ["bin.ts", "src/**/*.ts", "src/create/scripts/**/*.js"],
+	"include": [
+		"bin.ts",
+		"src/**/*.ts",
+		"src/create/scripts/**/*.js",
+		"src/create/build_scripts/addon-template.js",
+		"src/create/build_scripts/kit-template.js",
+		"src/create/build_scripts/vite-template.js"
+	],
 	"exclude": [
 		"dist/**",
 		"src/create/templates/**",

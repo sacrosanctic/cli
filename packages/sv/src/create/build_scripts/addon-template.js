@@ -18,7 +18,7 @@ const addonsDir = path.resolve(import.meta.dirname, '../../addons');
  * helper from `src/create/utils.ts`, just like templates do.
  * @param {string} dist
  */
-export function buildAddonContent(dist) {
+export function build_addon_content(dist) {
 	// A folder only counts as addon content when a `<folder>.ts` addon module
 	// sits next to it. This keeps support dirs like `tests/` out of the build.
 	const folders = fs

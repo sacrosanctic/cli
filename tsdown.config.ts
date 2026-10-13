@@ -1,9 +1,9 @@
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
-import { buildAddonContent } from './packages/sv/src/create/scripts/build-addon-content.js';
-import { build_kit_template } from './packages/sv/src/create/scripts/build-kit-template.js';
-import { build_vite_template } from './packages/sv/src/create/scripts/build-vite-template.js';
+import { build_addon_content } from './packages/sv/src/create/build_scripts/addon-template.js';
+import { build_kit_template } from './packages/sv/src/create/build_scripts/kit-template.js';
+import { build_vite_template } from './packages/sv/src/create/build_scripts/vite-template.js';
 import { mkdirp } from './packages/sv/src/create/utils.ts';
 
 /**
@@ -209,7 +209,7 @@ export async function buildCliTemplates() {
 
 	await build_kit_template(out);
 	build_vite_template(out);
-	buildAddonContent(out);
+	build_addon_content(out);
 
 	const [green, reset] = ['\x1b[32m', '\x1b[0m'];
 	console.log(`${green}✔${reset} Templates built in ${Math.round(performance.now() - start)}ms`);
