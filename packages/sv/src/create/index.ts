@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeName } from '@sveltejs/sv-utils';
+import * as v from 'valibot';
 import { filePaths, type PackageJSON } from '../core/common.ts';
 import { mkdirp, fetchAssets, pkg_root, replace, kv } from './utils.ts';
 
@@ -27,7 +28,7 @@ export function create({ cwd, ...options }: Options): void {
 	write_template_files(options.template, options.types, options.name, cwd);
 }
 
-export type TemplateMetadata = { name: TemplateType; title: string; description: string };
+type TemplateMetadata = { name: TemplateType; title: string; description: string };
 export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
 	const meta_file = path.join(pkg_root, 'dist', 'templates', dir, 'meta.json');
 	const { title, description } = JSON.parse(fs.readFileSync(meta_file, 'utf8'));
@@ -43,9 +44,6 @@ function write_template_files(template: string, types: LanguageType, name: strin
 	const template_dir = path.join(pkg_root, 'dist', 'templates', template);
 	fetchAssets(`${template_dir}/assets`, cwd, name);
 
-	// `package.json` ships as a regular entry of the files manifest, so there
-	// is nothing else to copy here. (The internal-only `svelte` template has
-	// no `package.json` entry, hence the `existsSync` guard below.)
 	const manifest = `${template_dir}/files.types=${types}.json`;
 	const shared_path = `${template_dir}/files.shared.json`;
 
@@ -72,7 +70,7 @@ function write_template_files(template: string, types: LanguageType, name: strin
 	}
 }
 
-function sort_keys<T>(obj?: Record<string, T>) {
+function sort_keys<T>(obj?: Record<string, T>): Record<string, T> | undefined {
 	if (!obj) return;
 
 	return Object.keys(obj)
