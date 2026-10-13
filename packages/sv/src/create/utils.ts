@@ -36,18 +36,10 @@ export function replace(contents: string, kv: Record<string, string>): string {
 	return contents;
 }
 
-export function kv(name: string): Record<string, string> {
-	const protocolName = name.startsWith('@') ? name.split('/')[0] : name;
-	return {
-		'$SV-PROTOCOL-NAME-TODO$': protocolName,
-		'$SV-NAME-TODO$': name
-	};
-}
-
 // files that have kv's in the contents that we replace
 const withReplaceExtensions = ['.md', '.js', '.ts', '.json'];
 
-function copy(
+export function copy(
 	from: string,
 	to: string,
 	rename: (basename: string) => string = identity,
@@ -104,10 +96,6 @@ export function saveAsset({
 	mkdirp(path.dirname(dest));
 	fs.copyFileSync(from, dest);
 	return dest;
-}
-
-export function fetchAssets(from: string, to: string, name: string): void {
-	copy(from, to, (file: string) => file.replace('DOT-', '.'), kv(name));
 }
 
 export function strip_typescript(content: string) {
