@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as walk from 'empathic/walk';
 import { transform } from 'sucrase';
+import * as v from 'valibot';
 import { isNodeError } from '../core/common.ts';
 
 // directory containing `package.json` — works whether the code is run from
@@ -137,4 +138,14 @@ export function strip_jsdoc(content: string) {
 				return `/**${description.replace(/\* $/, '')}*/${whitespace}`;
 			}
 		);
+}
+
+type NonEmptyArray<T> = [T, ...T[]];
+export function invalid_json(file_path: string, issues: NonEmptyArray<v.GenericIssue>): Error {
+	const error = [
+		`invalid JSON in ${file_path}:`,
+		issues.map((issue) => (issue.path ? `${v.getDotPath(issue)}: ${issue.message}` : issue.message))
+	].join('\n');
+
+	return new Error(error);
 }
