@@ -4,8 +4,7 @@ import * as v from 'valibot';
 import { pkg_root, invalid_json } from './utils.ts';
 
 const publicTemplateTypes = ['minimal', 'demo', 'library', 'addon'] as const;
-export const templateTypes = [...publicTemplateTypes, 'svelte'] as const;
-export type TemplateType = (typeof templateTypes)[number];
+export type TemplateType = (typeof publicTemplateTypes)[number] | 'svelte';
 
 export type LanguageType = 'typescript' | 'checkjs' | 'none';
 
