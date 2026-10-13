@@ -10,27 +10,15 @@ export type LanguageType = 'typescript' | 'checkjs' | 'none';
 
 const publicTemplateTypes = ['minimal', 'demo', 'library', 'addon'] as const;
 
+const FileSchema = v.object({ name: v.string(), contents: v.string() });
+export type File = v.InferOutput<typeof FileSchema>;
+
 export type Options = {
 	cwd: string;
 	name: string;
 	template: TemplateType;
 	types: LanguageType;
 };
-
-export const FileSchema = v.object({
-	name: v.string(),
-	contents: v.string()
-});
-export type File = v.InferOutput<typeof FileSchema>;
-
-const FilesSchema = v.pipe(v.string(), v.parseJson(), v.array(FileSchema));
-
-const TemplateMetaSchema = v.pipe(
-	v.string(),
-	v.parseJson(),
-	v.object({ title: v.string(), description: v.string() })
-);
-
 export function create({ cwd, ...options }: Options): void {
 	mkdirp(cwd);
 
@@ -38,28 +26,46 @@ export function create({ cwd, ...options }: Options): void {
 }
 
 type TemplateMetadata = { name: TemplateType; title: string; description: string };
-export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
-	const meta_file = path.join(pkg_root, 'dist', 'templates', dir, 'meta.json');
-	const { title, description } = v.parse(TemplateMetaSchema, fs.readFileSync(meta_file, 'utf8'));
+export const templates: TemplateMetadata[] = publicTemplateTypes.map((template_name) => {
+	const meta_file_path = path.join(pkg_root, 'dist', 'templates', template_name, 'meta.json');
+	const data = v.safeParse(
+		v.pipe(v.string(), v.parseJson(), v.object({ title: v.string(), description: v.string() })),
+		fs.readFileSync(meta_file_path, 'utf-8')
+	);
+	if (!data.success) throw invalid_json(meta_file_path, data.issues);
+	const { title, description } = data.output;
 
 	return {
-		name: dir,
+		name: template_name,
 		title,
 		description
 	};
 });
 
-function write_template_files(template: string, types: LanguageType, name: string, cwd: string) {
+function write_template_files(
+	template: TemplateType,
+	types: LanguageType,
+	name: string,
+	cwd: string
+) {
 	const template_dir = path.join(pkg_root, 'dist', 'templates', template);
 	fetchAssets(`${template_dir}/assets`, cwd, name);
 
 	const manifest = `${template_dir}/files.types=${types}.json`;
 	const shared_path = `${template_dir}/files.shared.json`;
 
-	let files = v.parse(FilesSchema, fs.readFileSync(manifest, 'utf-8'));
-	const shared = v.parse(FilesSchema, fs.readFileSync(shared_path, 'utf-8'));
+	const files_result = v.safeParse(
+		v.pipe(v.string(), v.parseJson(), v.array(FileSchema)),
+		fs.readFileSync(manifest, 'utf-8')
+	);
+	if (!files_result.success) throw invalid_json(manifest, files_result.issues);
+	const shared_result = v.safeParse(
+		v.pipe(v.string(), v.parseJson(), v.array(FileSchema)),
+		fs.readFileSync(shared_path, 'utf-8')
+	);
+	if (!shared_result.success) throw invalid_json(shared_path, shared_result.issues);
 
-	files = [...shared, ...files];
+	const files = [...shared_result.output, ...files_result.output];
 
 	files.forEach((file) => {
 		const dest = path.join(cwd, file.name);
@@ -69,10 +75,13 @@ function write_template_files(template: string, types: LanguageType, name: strin
 
 	const pkg_file = path.join(cwd, filePaths.packageJson);
 	if (fs.existsSync(pkg_file)) {
-		const pkg = v.parse(
+		const pkg_result = v.safeParse(
 			v.pipe(v.string(), v.parseJson(), PackageJSONSchema),
 			fs.readFileSync(pkg_file, 'utf-8')
 		);
+		if (!pkg_result.success) throw invalid_json(pkg_file, pkg_result.issues);
+
+		const pkg = pkg_result.output;
 
 		pkg.dependencies = sort_keys(pkg.dependencies);
 		pkg.devDependencies = sort_keys(pkg.devDependencies);
@@ -80,6 +89,18 @@ function write_template_files(template: string, types: LanguageType, name: strin
 
 		fs.writeFileSync(pkg_file, JSON.stringify(pkg, null, '\t') + '\n');
 	}
+}
+
+function invalid_json(
+	file_path: string,
+	issues: [v.BaseIssue<unknown>, ...Array<v.BaseIssue<unknown>>]
+): Error {
+	const error = [
+		`invalid JSON in ${file_path}:`,
+		issues.map((issue) => (issue.path ? `${v.getDotPath(issue)}: ${issue.message}` : issue.message))
+	].join('\n');
+
+	return new Error(error);
 }
 
 function sort_keys<T>(obj?: Record<string, T>): Record<string, T> | undefined {
