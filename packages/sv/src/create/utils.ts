@@ -36,29 +36,21 @@ export function replace(contents: string, kv: Record<string, string>): string {
 	return contents;
 }
 
-// files that have kv's in the contents that we replace
-const withReplaceExtensions = ['.md', '.js', '.ts', '.json'];
-
 export function copy(
 	from: string,
 	to: string,
-	rename: (basename: string) => string = identity,
-	kv: Record<string, string> = {}
+	rename: (basename: string) => string = identity
 ): void {
 	if (!fs.existsSync(from)) return;
 	const stats = fs.statSync(from);
 
 	if (stats.isDirectory()) {
 		fs.readdirSync(from).forEach((file) => {
-			copy(path.join(from, file), path.join(to, rename(file)), rename, kv);
+			copy(path.join(from, file), path.join(to, rename(file)), rename);
 		});
 	} else {
 		mkdirp(path.dirname(to));
-		if (withReplaceExtensions.some((ext) => from.endsWith(ext))) {
-			fs.writeFileSync(to, replace(fs.readFileSync(from, 'utf-8'), kv));
-		} else {
-			fs.copyFileSync(from, to);
-		}
+		fs.copyFileSync(from, to);
 	}
 }
 

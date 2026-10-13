@@ -5,7 +5,7 @@ import * as v from 'valibot';
 import { filePaths, type PackageJSON } from '../core/common.ts';
 import { FileSchema } from './contract.ts';
 import type { LanguageType, TemplateType } from './templates.ts';
-import { mkdirp, pkg_root, replace, invalid_json, copy } from './utils.ts';
+import { mkdirp, pkg_root, invalid_json, copy } from './utils.ts';
 
 export type Options = { cwd: string; name: string; template: TemplateType; types: LanguageType };
 /**
@@ -15,7 +15,7 @@ export function create({ cwd, name: project_name, template, types }: Options): v
 	mkdirp(cwd);
 
 	const template_path = path.join(pkg_root, 'dist', 'templates', template, 'assets');
-	copy(template_path, cwd, (file: string) => file.replace('DOT-', '.'), kv(project_name));
+	copy(template_path, cwd, (file: string) => file.replace('DOT-', '.'));
 
 	const typed_file_path = `${template_path}/files.types=${types}.json`;
 	const shared_file_path = `${template_path}/files.shared.json`;
