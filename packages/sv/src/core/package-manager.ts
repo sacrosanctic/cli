@@ -164,6 +164,23 @@ export function addEngineStrict(options: ProjectOptions): void {
 	}
 }
 
+const devEngines = {
+	runtime: { name: 'node', version: '^22.18.0', onFail: 'download' },
+	packageManager: { name: 'pnpm', version: '^11.28.3', onFail: 'download' }
+} as const;
+
+/** pnpm evaluates `devEngines` in the generated `package.json` and auto-downloads missing tooling. */
+export function addDevEnginesIfPnpm(options: ProjectOptions): void {
+	if (options.packageManager !== 'pnpm') return;
+
+	transformFile(
+		path.join(options.cwd, 'package.json'),
+		transforms.json((file) => {
+			file.data.devEngines ??= devEngines;
+		})
+	);
+}
+
 /** Missing file is treated as empty, so the transform can create it. */
 function transformFile(filePath: string, transform: TransformFn): void {
 	const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
