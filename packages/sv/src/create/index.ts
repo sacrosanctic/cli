@@ -1,93 +1,58 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sanitizeName } from '@sveltejs/sv-utils';
-import { filePaths, type PackageJSON } from '../core/common.ts';
-import { mkdirp, copy, dist_dir, replace, kv } from './utils.ts';
+import * as v from 'valibot';
+import { filePaths, Manifest, type PackageJSON } from '../core/common.ts';
+import { type LanguageType, type TemplateType } from './templates.ts';
+import { mkdirp, dist_dir, invalid_json, copy, replace } from './utils.ts';
 
-const publicTemplateTypes = ['minimal', 'demo', 'library', 'addon'] as const;
-export type TemplateType = (typeof publicTemplateTypes)[number] | 'svelte';
-export type LanguageType = 'typescript' | 'checkjs' | 'none';
+export { templates, type TemplateMetadata } from './templates.ts';
+export type { TemplateType, LanguageType } from './templates.ts';
 
-export type Options = {
-	cwd: string;
-	name: string;
-	template: TemplateType;
-	types: LanguageType;
-};
+export type Options = { cwd: string; name: string; template: TemplateType; types: LanguageType };
+export type File = { name: string; contents: string };
 
-export type File = {
-	name: string;
-	contents: string;
-};
-
-export function create({ cwd, ...options }: Options): void {
+export function create({ cwd, name: project_name, template, types }: Options): void {
 	mkdirp(cwd);
 
-	write_template_files(options.template, options.types, options.name, cwd);
+	const template_dir = path.join(dist_dir, 'templates', template);
+	copy(path.join(template_dir, 'assets'), cwd, (file: string) => file.replace('DOT-', '.'));
 
-	// 'svelte' comes verbatim from create-vite
-	if (options.template !== 'svelte') {
-		finalize_package_json(cwd, options.name);
-	}
+	const typed_file_path = path.join(template_dir, `files.types=${types}.json`);
+	const shared_file_path = path.join(template_dir, 'files.shared.json');
 
-	// Files that are not relevant for 'addon' template
-	if (options.template === 'addon') {
-		for (const name of [
-			'svelte.config.js',
-			'svelte.config.ts',
-			'vite.config.js',
-			'vite.config.ts'
-		]) {
-			fs.rmSync(path.join(cwd, name), { force: true });
-		}
-	}
-}
+	const typed_result = v.safeParse(
+		v.pipe(v.string(), v.parseJson(), v.array(Manifest)),
+		fs.readFileSync(typed_file_path, 'utf-8')
+	);
+	if (!typed_result.success) throw invalid_json(typed_file_path, typed_result.issues);
 
-export type TemplateMetadata = { name: TemplateType; title: string; description: string };
-export const templates: TemplateMetadata[] = publicTemplateTypes.map((dir) => {
-	const meta_file = path.join(dist_dir, 'templates', dir, 'meta.json');
-	const { title, description } = JSON.parse(fs.readFileSync(meta_file, 'utf8'));
+	const shared_result = v.safeParse(
+		v.pipe(v.string(), v.parseJson(), v.array(Manifest)),
+		fs.readFileSync(shared_file_path, 'utf-8')
+	);
+	if (!shared_result.success) throw invalid_json(shared_file_path, shared_result.issues);
 
-	return {
-		name: dir,
-		title,
-		description
-	};
-});
-
-function write_template_files(template: string, types: LanguageType, name: string, cwd: string) {
-	const dir = path.join(dist_dir, 'templates', template);
-	copy(`${dir}/assets`, cwd, (name: string) => name.replace('DOT-', '.'), kv(name));
-	copy(`${dir}/package.json`, `${cwd}/package.json`, undefined, kv(name));
-
-	const manifest = `${dir}/files.types=${types}.json`;
-	const files = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as File[];
+	const files = [...shared_result.output, ...typed_result.output];
 
 	files.forEach((file) => {
 		const dest = path.join(cwd, file.name);
 		mkdirp(path.dirname(dest));
-		fs.writeFileSync(dest, replace(file.contents, kv(name)));
+		fs.writeFileSync(dest, replace(file.contents, kv(project_name)));
 	});
+
+	const package_json_path = path.join(cwd, filePaths.packageJson);
+	if (fs.existsSync(package_json_path)) {
+		const pkg: PackageJSON = JSON.parse(fs.readFileSync(package_json_path, 'utf-8'));
+		pkg.name = sanitizeName(project_name, 'package');
+		fs.writeFileSync(package_json_path, JSON.stringify(pkg, null, '\t') + '\n');
+	}
 }
 
-function finalize_package_json(cwd: string, name: string) {
-	const pkg_file = path.join(cwd, filePaths.packageJson);
-	const pkg: PackageJSON = JSON.parse(fs.readFileSync(pkg_file, 'utf-8'));
-
-	pkg.dependencies = sort_keys(pkg.dependencies);
-	pkg.devDependencies = sort_keys(pkg.devDependencies);
-	pkg.name = sanitizeName(name, 'package');
-
-	fs.writeFileSync(pkg_file, JSON.stringify(pkg, null, '\t') + '\n');
-}
-
-function sort_keys<T>(obj?: Record<string, T>) {
-	if (!obj) return;
-
-	return Object.keys(obj)
-		.sort()
-		.reduce<Record<string, T>>((sorted, key) => {
-			sorted[key] = obj[key];
-			return sorted;
-		}, {});
+function kv(name: string): Record<string, string> {
+	const protocolName = name.startsWith('@') ? name.split('/')[0] : name;
+	return {
+		'$SV-PROTOCOL-NAME-TODO$': protocolName,
+		'$SV-NAME-TODO$': name
+	};
 }

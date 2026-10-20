@@ -28,6 +28,9 @@ export const PackageJSON = v.looseObject({
 });
 export type PackageJSON = v.InferOutput<typeof PackageJSON>;
 
+export const TemplateFile = v.object({ name: v.string(), contents: v.string() });
+export type TemplateFile = v.InferOutput<typeof TemplateFile>;
+
 export const cliOptions = {
 	noDownloadCheck: new Option(
 		'--no-download-check',

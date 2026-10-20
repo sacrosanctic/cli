@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as walk from 'empathic/walk';
+import * as v from 'valibot';
 import { isNodeError } from '../core/common.ts';
 
 /**
@@ -45,41 +46,23 @@ export function replace(contents: string, kv: Record<string, string>): string {
 	return contents;
 }
 
-export function kv(name: string): Record<string, string> {
-	const protocolName = name.startsWith('@') ? name.split('/')[0] : name;
-	return {
-		'$SV-PROTOCOL-NAME-TODO$': protocolName,
-		'$SV-NAME-TODO$': name
-	};
-}
-
-// files that have kv's in the contents that we replace
-const withReplaceExtensions = ['.md', '.js', '.ts', '.json'];
-
 export function copy(
 	from: string,
 	to: string,
-	rename: (basename: string) => string = identity,
-	kv: Record<string, string> = {}
+	rename: (basename: string) => string = identity
 ): void {
 	if (!fs.existsSync(from)) return;
-	const stats = fs.statSync(from);
-
-	if (stats.isDirectory()) {
-		fs.readdirSync(from).forEach((file) => {
-			copy(path.join(from, file), path.join(to, rename(file)), rename, kv);
-		});
-	} else {
+	if (fs.statSync(from).isFile()) {
 		mkdirp(path.dirname(to));
-		if (withReplaceExtensions.some((ext) => from.endsWith(ext))) {
-			fs.writeFileSync(to, replace(fs.readFileSync(from, 'utf-8'), kv));
-		} else {
-			fs.copyFileSync(from, to);
-		}
+		fs.copyFileSync(from, to);
+		return;
 	}
+
+	fs.readdirSync(from).forEach((file) => {
+		copy(path.join(from, file), path.join(to, rename(file)), rename);
+	});
 }
 
-/** Sorted `/`-separated paths relative to `cwd` (posix even on Windows: names are matched by prefix and shipped in dist). */
 export function listFiles(cwd: string): string[] {
 	return fs
 		.readdirSync(cwd, { recursive: true, withFileTypes: true })
@@ -130,7 +113,12 @@ export function isBinaryFile(file_path: string): boolean {
 	return !text;
 }
 
-/** `DOT-` prefix so dotfiles survive publishing; renamed back at runtime by `fetchAssets()`. */
+/**
+ * Save a single asset file verbatim into an `assets` output dir, prefixing
+ * leading-dot names with `DOT-` so dotfiles survive publishing. Runtime
+ * renames them back via `fetchAssets()`. Shared by template and addon builds so all
+ * three emit assets with the same logic.
+ */
 export function saveAsset({
 	from,
 	assetsDir,
@@ -144,4 +132,14 @@ export function saveAsset({
 	mkdirp(path.dirname(dest));
 	fs.copyFileSync(from, dest);
 	return dest;
+}
+
+type NonEmptyArray<T> = [T, ...T[]];
+export function invalid_json(file_path: string, issues: NonEmptyArray<v.GenericIssue>): Error {
+	const error = [
+		`invalid JSON in ${file_path}:`,
+		issues.map((issue) => (issue.path ? `${v.getDotPath(issue)}: ${issue.message}` : issue.message))
+	].join('\n');
+
+	return new Error(error);
 }
