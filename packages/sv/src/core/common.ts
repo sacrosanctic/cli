@@ -15,7 +15,7 @@ import type { LoadedAddon, Verification } from './config.ts';
 import { UnsupportedError } from './errors.ts';
 
 const StringRecordSchema = v.record(v.string(), v.string());
-export const PackageJSONSchema = v.looseObject({
+export const PackageJSON = v.looseObject({
 	name: v.string(),
 	version: v.string(),
 	peerDependencies: v.optional(StringRecordSchema),
@@ -25,7 +25,10 @@ export const PackageJSONSchema = v.looseObject({
 	dist: v.optional(v.looseObject({ tarball: v.optional(v.string()) })),
 	exports: v.optional(v.union([v.string(), v.array(v.string()), v.record(v.string(), v.any())]))
 });
-export type PackageJSON = v.InferOutput<typeof PackageJSONSchema>;
+export type PackageJSON = v.InferOutput<typeof PackageJSON>;
+
+export const TemplateFile = v.object({ name: v.string(), contents: v.string() });
+export type TemplateFile = v.InferOutput<typeof TemplateFile>;
 
 export const cliOptions = {
 	noDownloadCheck: new Option(

@@ -146,30 +146,27 @@ async function getLatestVersion(name) {
 
 await updateAddonDependencies();
 
-// Update template package.template.json files
-await updatePackageFiles('packages/sv/src/create/templates', 'package.template.json', 'template');
-
-// Update shared package.json files
-await updatePackageFiles('packages/sv/src/create/shared', 'package.json', 'shared');
+// Update template package.json files
+await updatePackageFiles('packages/sv/src/create/templates', 'package.json', 'template');
 
 // Fetch the latest AGENTS.md from the ai-tools repo
 const agents_response = await fetch(
 	'https://raw.githubusercontent.com/sveltejs/ai-tools/refs/heads/main/tools/instructions/AGENTS.md'
 );
 fs.writeFileSync(
-	path.resolve('packages', 'sv', 'src', 'create', 'shared', '+mcp', 'AGENTS.md'),
+	path.resolve('packages', 'sv', 'src', 'addons', 'ai-tools', 'mcp', 'AGENTS.md'),
 	await agents_response.text()
 );
 
 // Fetch the latest skills from the ai-tools repo
 const skillsBase =
 	'https://raw.githubusercontent.com/sveltejs/ai-tools/refs/heads/main/tools/skills';
-const sharedSkillsBase = path.resolve('packages', 'sv', 'src', 'create', 'shared', '+skills');
+const skillsDest = path.resolve('packages', 'sv', 'src', 'addons', 'ai-tools', 'skills');
 
 /** @param {string} skillPath */
 async function fetchSkillFile(skillPath) {
 	const response = await fetch(`${skillsBase}/${skillPath}`);
-	const dest = path.resolve(sharedSkillsBase, skillPath);
+	const dest = path.resolve(skillsDest, skillPath);
 	fs.mkdirSync(path.dirname(dest), { recursive: true });
 	fs.writeFileSync(dest, await response.text());
 }
@@ -198,7 +195,7 @@ await fetchSkillDir(skillsApiBase);
 // Fetch the latest agents from the ai-tools repo
 const agentsBase =
 	'https://raw.githubusercontent.com/sveltejs/ai-tools/refs/heads/main/tools/agents';
-const sharedAgentsBase = path.resolve('packages', 'sv', 'src', 'create', 'shared', '+agents');
+const agentsDest = path.resolve('packages', 'sv', 'src', 'addons', 'ai-tools', 'agents');
 const agentsApiBase = 'https://api.github.com/repos/sveltejs/ai-tools/contents/tools/agents';
 
 console.log(`Fetching ${styleText(['cyanBright', 'bold'], 'agents')} from ai-tools repo`);
@@ -209,7 +206,7 @@ for (const entry of agentEntries) {
 		const agentName = entry.name;
 		console.log(`  - fetching agent: ${styleText('blue', agentName)}`);
 		const response = await fetch(`${agentsBase}/${agentName}`);
-		fs.mkdirSync(sharedAgentsBase, { recursive: true });
-		fs.writeFileSync(path.resolve(sharedAgentsBase, agentName), await response.text());
+		fs.mkdirSync(agentsDest, { recursive: true });
+		fs.writeFileSync(path.resolve(agentsDest, agentName), await response.text());
 	}
 }

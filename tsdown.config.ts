@@ -1,7 +1,10 @@
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
-import { buildTemplates } from './packages/sv/src/create/scripts/build-templates.js';
+import { build_addon_content } from './packages/sv/src/create/scripts/build-addon-template.js';
+import { build_kit_template } from './packages/sv/src/create/scripts/build-kit-template.js';
+import { build_vite_template } from './packages/sv/src/create/scripts/build-vite-template.js';
+import { dist_dir, mkdirp } from './packages/sv/src/create/utils.ts';
 
 /**
  * Throwaway output dir for the single-entry DTS builds that feed
@@ -198,7 +201,15 @@ export default defineConfig([
 
 export async function buildCliTemplates() {
 	const start = performance.now();
-	await buildTemplates(path.resolve('packages/sv/dist'));
+
+	// where the runtime code — bundled CLI, published package and plain
+	// source/vitest runs alike — resolves templates/addons via `pkg_root`
+	mkdirp(dist_dir);
+
+	await build_kit_template(dist_dir);
+	build_vite_template(dist_dir);
+	build_addon_content(dist_dir);
+
 	const [green, reset] = ['\x1b[32m', '\x1b[0m'];
 	console.log(`${green}✔${reset} Templates built in ${Math.round(performance.now() - start)}ms`);
 }

@@ -1,20 +1,15 @@
 import * as fs from 'node:fs';
 import path from 'node:path';
-import * as find from 'empathic/find';
-import { expect, test } from 'vitest';
-import { create } from '../index.ts';
-import {
+import { expect, test as baseTest } from 'vitest';
+import playground, {
 	detectPlaygroundDependencies,
 	downloadPlaygroundData,
 	parsePlaygroundUrl,
-	setupPlaygroundProject,
 	validatePlaygroundUrl
-} from '../playground.ts';
+} from '../../playground.ts';
+import { setupTest } from '../_setup/suite.ts';
 
-const ROOT = path.dirname(find.up('pnpm-workspace.yaml', { cwd: import.meta.dirname })!);
-const TEST_DIR = path.resolve(ROOT, 'packages', 'sv', '.test-output', 'playground');
-
-test.for([
+baseTest.for([
 	{ input: 'https://svelte.dev/playground/628f435d787a465f9c1f1854134d6f70/', valid: true },
 	{ input: 'https://svelte.dev/playground/hello-world', valid: true },
 	{
@@ -34,7 +29,7 @@ test.for([
 	expect(isValid).toBe(data.valid);
 });
 
-test.for([
+baseTest.for([
 	{
 		url: 'https://svelte.dev/playground/628f435d787a465f9c1f1854134d6f70/',
 		expected: {
@@ -71,7 +66,7 @@ test.for([
 	expect(svelteVersion).toBe(data.expected.version);
 });
 
-test.for([
+baseTest.for([
 	{
 		testName: 'playground id',
 		playgroundId: 'hello-world',
@@ -96,7 +91,7 @@ test.for([
 	expect(file1.content).toContain('<h1>Hello {name}!</h1>');
 });
 
-test('detect dependencies from playground files', () => {
+baseTest('detect dependencies from playground files', () => {
 	const files = [
 		{
 			name: 'App.svelte',
@@ -147,89 +142,68 @@ test('detect dependencies from playground files', () => {
 	expect(Array.from(dependencies.keys()).length).toBe(3);
 });
 
-test('download and convert playground e2e (svelte async)', async () => {
-	const directory = path.join(TEST_DIR, 'playground-e2e-svelte-async');
-	if (fs.existsSync(directory)) {
-		fs.rmSync(directory, { recursive: true });
+const PLAYGROUND_ID = '770bbef086034b9f8e337bab57efe8d8';
+
+const { test, testCases } = setupTest(
+	{ playground },
+	{
+		kinds: [
+			{
+				type: 'svelte-async',
+				options: {
+					playground: {
+						url: `https://svelte.dev/playground/${PLAYGROUND_ID}?version=5.38.7`,
+						installDeps: true
+					}
+				}
+			},
+			{
+				type: 'pre-svelte-async',
+				options: {
+					playground: {
+						url: `https://svelte.dev/playground/${PLAYGROUND_ID}?version=5.0.5`,
+						installDeps: true
+					}
+				}
+			}
+		],
+		// the add-on requires SvelteKit
+		filter: ({ variant }) => variant.startsWith('kit'),
+		browser: false
 	}
+);
 
-	create({
-		cwd: directory,
-		name: 'playground-e2e-svelte-async',
-		template: 'minimal',
-		types: 'typescript'
-	});
+test.concurrent.for(testCases)('playground $kind.type $variant', (testCase, { ...ctx }) => {
+	const cwd = ctx.cwd(testCase);
 
-	const playground = await downloadPlaygroundData({
-		playgroundId: '770bbef086034b9f8e337bab57efe8d8',
-		hash: undefined,
-		svelteVersion: '5.38.7'
-	});
-
-	setupPlaygroundProject(
-		'https://svelte.dev/playground/770bbef086034b9f8e337bab57efe8d8',
-		playground,
-		directory,
-		true
-	);
-
-	const pageFilePath = path.join(directory, 'src/routes/+page.svelte');
-	const pageContent = fs.readFileSync(pageFilePath, 'utf-8');
+	const pageContent = fs.readFileSync(path.join(cwd, 'src/routes/+page.svelte'), 'utf-8');
 	expect(pageContent).toContain('<App />');
 	expect(pageContent).toContain('<PlaygroundLayout>');
 
-	const playgroundLayoutPath = path.join(directory, 'src/lib/PlaygroundLayout.svelte');
-	const playgroundLayoutContent = fs.readFileSync(playgroundLayoutPath, 'utf-8');
+	const playgroundLayoutContent = fs.readFileSync(
+		path.join(cwd, 'src/lib/PlaygroundLayout.svelte'),
+		'utf-8'
+	);
 	expect(playgroundLayoutContent).toContain('localStorage.getItem');
 	expect(playgroundLayoutContent).toContain('sv:theme');
-	expect(playgroundLayoutContent).toContain('770bbef086034b9f8e337bab57efe8d8');
+	expect(playgroundLayoutContent).toContain(PLAYGROUND_ID);
 	// parse & print issue
 	expect(playgroundLayoutContent).not.toContain('"{()"');
 	expect(playgroundLayoutContent).not.toContain('&gt;');
 	expect(playgroundLayoutContent).not.toContain('onclick="{switchTheme}"');
 	expect(playgroundLayoutContent).toContain('onclick={switchTheme}');
 
-	const packageJsonPath = path.join(directory, 'package.json');
-	const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
+	const packageJsonContent = fs.readFileSync(path.join(cwd, 'package.json'), 'utf-8');
 	expect(packageJsonContent).toContain('"change-case": "latest"');
-	expect(packageJsonContent).toContain('"svelte": "5.38.7"');
 
-	const viteConfigPath = path.join(directory, 'vite.config.ts');
-	const viteConfigContent = fs.readFileSync(viteConfigPath, 'utf-8');
-	expect(viteConfigContent).toContain('experimental: { async: true }');
-});
+	const viteConfig = `vite.config.${testCase.variant.endsWith('-ts') ? 'ts' : 'js'}`;
+	const viteConfigContent = fs.readFileSync(path.join(cwd, viteConfig), 'utf-8');
 
-test('download and convert playground e2e (pre svelte async)', async () => {
-	const directory = path.join(TEST_DIR, 'playground-e2e-pre-svelte-async');
-	if (fs.existsSync(directory)) {
-		fs.rmSync(directory, { recursive: true });
+	if (testCase.kind.type === 'svelte-async') {
+		expect(packageJsonContent).toContain('"svelte": "5.38.7"');
+		expect(viteConfigContent).toContain('experimental: { async: true }');
+	} else {
+		expect(packageJsonContent).toContain('"svelte": "5.0.5"');
+		expect(viteConfigContent).not.toContain('experimental: { async: true }');
 	}
-
-	create({
-		cwd: directory,
-		name: 'playground-e2e-pre-svelte-async',
-		template: 'minimal',
-		types: 'typescript'
-	});
-
-	const playground = await downloadPlaygroundData({
-		playgroundId: '770bbef086034b9f8e337bab57efe8d8',
-		hash: undefined,
-		svelteVersion: '5.0.5'
-	});
-
-	setupPlaygroundProject(
-		'https://svelte.dev/playground/770bbef086034b9f8e337bab57efe8d8',
-		playground,
-		directory,
-		true
-	);
-
-	const packageJsonPath = path.join(directory, 'package.json');
-	const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
-	expect(packageJsonContent).toContain('"svelte": "5.0.5"');
-
-	const viteConfigPath = path.join(directory, 'vite.config.ts');
-	const viteConfigContent = fs.readFileSync(viteConfigPath, 'utf-8');
-	expect(viteConfigContent).not.toContain('experimental: { async: true }');
 });
