@@ -1,13 +1,10 @@
 // @ts-check
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mkdirp } from '../utils.ts';
 
 /** @import { File, LanguageType } from '../index.ts' */
-
-const require = createRequire(import.meta.url);
-const createVitePath = path.dirname(require.resolve('create-vite/package.json'));
 
 /**
  * Generates the 'svelte' template (vite-only, no SvelteKit) from create-vite bundled templates.
@@ -32,6 +29,8 @@ export function generate_vite_template(dist) {
 		{ src: 'template-svelte-ts', lang: /** @type {LanguageType} */ ('typescript') }
 	]);
 
+	const createVitePackageJson = fileURLToPath(import.meta.resolve('create-vite/package.json'));
+	const createVitePath = path.dirname(createVitePackageJson);
 	for (const { src, lang } of variants) {
 		const srcDir = path.join(createVitePath, src);
 		const files = fs
