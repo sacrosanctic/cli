@@ -1,0 +1,424 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import * as p from '@clack/prompts';
+import { color } from '@sveltejs/sv-utils';
+import * as v from 'valibot';
+import { getAddonDetails } from '../addons/index.ts';
+import playground, { preparePlayground } from '../addons/playground.ts';
+import {
+	getNextSteps,
+	addonArgsHandler,
+	classifyAddons,
+	promptAddonQuestions,
+	resolveAddons,
+	runAddonsApply
+} from '../cli/add.ts';
+import * as common from '../core/common.ts';
+import {
+	createLoadedAddon,
+	type LoadedAddon,
+	type OptionValues,
+	type SetupResult
+} from '../core/config.ts';
+import { formatFiles } from '../core/formatFiles.ts';
+import {
+	AGENT_NAMES,
+	addAllowBuildsIfPnpm,
+	addEngineStrict,
+	installDependencies,
+	packageManagerPrompt
+} from '../core/package-manager.ts';
+import { createWorkspace, type Workspace } from '../core/workspace.ts';
+import { create, templates, type LanguageType, type TemplateType } from './index.ts';
+import { dist_dir } from './utils.ts';
+
+const langs = ['ts', 'jsdoc'] as const;
+const langMap: Record<string, LanguageType> = {
+	ts: 'typescript',
+	jsdoc: 'checkjs',
+	false: 'none'
+};
+
+const ProjectPathSchema = v.optional(v.string());
+const OptionsSchema = v.strictObject({
+	types: v.pipe(
+		v.optional(v.union([v.picklist(langs), v.boolean()])),
+		v.transform((lang) => langMap[String(lang)])
+	),
+	addOns: v.boolean(),
+	add: v.array(v.string()),
+	install: v.optional(v.union([v.boolean(), v.picklist(AGENT_NAMES)]), true),
+	template: v.optional(v.picklist(templates.map((t) => t.name))),
+	fromPlayground: v.optional(v.string()),
+	dirCheck: v.boolean(),
+	downloadCheck: v.boolean(),
+	addonName: v.optional(v.string())
+});
+type Options = v.InferOutput<typeof OptionsSchema>;
+type ProjectPath = v.InferOutput<typeof ProjectPathSchema>;
+
+export { OptionsSchema, ProjectPathSchema, langs };
+export type { Options, ProjectPath };
+
+export async function createProject(cwd: ProjectPath, options: Options) {
+	if (options.fromPlayground) {
+		p.log.warn(
+			'Svelte maintainers have not reviewed playgrounds for malicious code! Use at your discretion.'
+		);
+	}
+
+	if (options.template === 'addon' && options.types === 'typescript') {
+		p.log.warn(
+			`The addon template does not support TypeScript. The ${color.command('--types')} flag will be ignored.`
+		);
+	}
+
+	const promptGroupResult = await p.group(
+		{
+			directory: () => {
+				const defaultPath = './';
+				if (cwd) {
+					return Promise.resolve(common.normalizePosix(cwd));
+				}
+				return p.text({
+					message: 'Where would you like your project to be created?',
+					placeholder: `  (hit Enter to use '${defaultPath}')`,
+					defaultValue: defaultPath
+				});
+			},
+			force: async ({ results: { directory } }) => {
+				if (!options.dirCheck) return;
+
+				if (!fs.existsSync(directory!)) return;
+
+				const files = fs.readdirSync(directory!);
+				const hasNonIgnoredFiles = files.some((file) => !file.startsWith('.git'));
+				if (!hasNonIgnoredFiles) return;
+
+				const force = await p.confirm({
+					message: 'Directory not empty. Continue?',
+					initialValue: false
+				});
+				if (p.isCancel(force) || !force) {
+					p.cancel('Exiting.');
+					process.exit(0);
+				}
+			},
+			template: () => {
+				if (options.template) return Promise.resolve(options.template);
+				// always use the minimal template for playground projects
+				if (options.fromPlayground) return Promise.resolve<TemplateType>('minimal');
+
+				// the addon template is incompatible with "--add"
+				const availableTemplates =
+					options.add.length > 0 ? templates.filter((t) => t.name !== 'addon') : templates;
+
+				return p.select<TemplateType>({
+					message: 'Which template would you like?',
+					initialValue: 'minimal',
+					options: availableTemplates.map((t) => ({
+						label: t.title,
+						value: t.name,
+						hint: t.description
+					}))
+				});
+			},
+			language: (o) => {
+				if (o.results.template === 'addon') return Promise.resolve<LanguageType>('none');
+				if (options.types) return Promise.resolve(options.types);
+				return p.select<LanguageType>({
+					message: 'Add type checking with TypeScript?',
+					initialValue: 'typescript',
+					options: [
+						{ label: 'Yes, using TypeScript syntax', value: 'typescript' },
+						{ label: 'Yes, using JavaScript with JSDoc comments', value: 'checkjs' },
+						{ label: 'No', value: 'none' }
+					]
+				});
+			}
+		},
+		{
+			onCancel: () => {
+				p.cancel('Operation cancelled.');
+				process.exit(0);
+			}
+		}
+	);
+	const { directory, template } = promptGroupResult;
+	// this is needed, otherwise, language is unknown
+	const language = promptGroupResult.language as LanguageType;
+
+	const projectPath = path.resolve(directory);
+	const basename = path.basename(projectPath);
+	const parentDirName = path.basename(path.dirname(projectPath));
+	let projectName = parentDirName.startsWith('@') ? `${parentDirName}/${basename}` : basename;
+
+	if (template === 'addon') {
+		if (options.add.length > 0) {
+			common.errorAndExit(
+				`The ${color.command('--add')} flag cannot be used with the ${color.command('addon')} template.`
+			);
+		}
+
+		const namePrompt =
+			options.addonName ??
+			(await p.text({
+				message: `Enter the package name for your add-on: (e.g. ${color.path('@<org>/<pkg>')} or ${color.path('<pkg>')})`,
+				initialValue: projectName,
+				validate: v.pipe(v.string(), v.nonEmpty())
+			}));
+		if (p.isCancel(namePrompt)) {
+			p.cancel('Operation cancelled.');
+			process.exit(0);
+		}
+
+		projectName = namePrompt;
+	}
+
+	let loadedAddons: LoadedAddon[] = [];
+	let answers: Record<string, OptionValues<any>> = {};
+	let addonsOptionsMap: Record<string, string[] | undefined> = {};
+
+	const workspace = await createVirtualWorkspace({
+		cwd: projectPath,
+		template,
+		type: language
+	});
+
+	if (template !== 'addon' && (options.addOns || options.add.length > 0)) {
+		const addonInputs = options.add.reduce(addonArgsHandler, []);
+		const addonRefs = classifyAddons(addonInputs, projectPath);
+
+		// Resolve all addons (official and community) - returns LoadedAddon[]
+		loadedAddons = await resolveAddons(addonRefs, options.downloadCheck);
+
+		// Map options from loaded addons to resolved IDs
+		addonsOptionsMap = {};
+		for (const loaded of loadedAddons) {
+			addonsOptionsMap[loaded.addon.id] = loaded.reference.options;
+		}
+
+		const result = await promptAddonQuestions({
+			options: {
+				cwd: projectPath,
+				install: false,
+				gitCheck: false,
+				downloadCheck: options.downloadCheck,
+				addons: addonsOptionsMap
+			},
+			loadedAddons,
+			workspace
+		});
+
+		loadedAddons = result.loadedAddons;
+		answers = result.answers;
+	}
+
+	if (template === 'demo' && !loadedAddons.some((a) => a.addon.id === 'enhanced-img')) {
+		const addon = getAddonDetails('enhanced-img');
+		loadedAddons.push(createLoadedAddon(addon));
+		answers['enhanced-img'] = {};
+	}
+
+	create({
+		cwd: projectPath,
+		name: projectName,
+		template,
+		types: language
+	});
+
+	if (options.fromPlayground) {
+		await createProjectFromPlayground(options.fromPlayground, loadedAddons, answers);
+	}
+
+	p.log.success('Project created');
+
+	// Resolve the package manager early in case it's used in an add-on.
+	const packageManager =
+		options.install === false
+			? null
+			: options.install === true
+				? await packageManagerPrompt(projectPath)
+				: options.install;
+
+	if (packageManager) {
+		workspace.packageManager = packageManager;
+
+		if (template === 'library') {
+			common.updateLibraryBuild(projectPath, packageManager);
+		}
+	}
+
+	let argsFormattedAddons: string[] = [];
+	let addOnFilesToFormat: string[] = [];
+	let addOnSuccessfulAddons: LoadedAddon[] = [];
+	let addonSetupResults: Record<string, SetupResult> = {};
+	if (loadedAddons.length > 0) {
+		const {
+			argsFormattedAddons: argsFormatted,
+			filesToFormat,
+			successfulAddons,
+			setupResults
+		} = await runAddonsApply({
+			answers,
+			options: {
+				cwd: projectPath,
+				// in the create command, we don't want to install dependencies, we want to do it after the project is created
+				install: false,
+				gitCheck: false,
+				downloadCheck: options.downloadCheck,
+				addons: addonsOptionsMap
+			},
+			loadedAddons,
+			setupResults: undefined,
+			workspace,
+			fromCommand: 'create'
+		});
+		argsFormattedAddons = argsFormatted;
+		addOnFilesToFormat = filesToFormat;
+		addOnSuccessfulAddons = successfulAddons;
+		addonSetupResults = setupResults;
+	}
+
+	// Build args for next time based on non-default options
+	const argsFormatted: string[] = [];
+
+	argsFormatted.push('--template', template);
+
+	if (language === 'typescript') argsFormatted.push('--types', 'ts');
+	else if (language === 'checkjs') argsFormatted.push('--types', 'jsdoc');
+	else if (language === 'none') argsFormatted.push('--no-types');
+
+	if (argsFormattedAddons.length > 0) argsFormatted.push('--add', ...argsFormattedAddons);
+
+	if (options.fromPlayground) argsFormatted.push('--from-playground', options.fromPlayground);
+
+	const prompt = common.buildAndLogArgs(packageManager, 'create', argsFormatted, [directory]);
+	common.updateReadme(directory, prompt);
+
+	common.updateAgent(directory, language, packageManager ?? 'npm', loadedAddons);
+
+	const addOnNextSteps = getNextSteps(addOnSuccessfulAddons, workspace, answers, addonSetupResults);
+
+	addEngineStrict({ cwd: projectPath, packageManager });
+	addAllowBuildsIfPnpm({ cwd: projectPath, packageManager, packages: ['esbuild'] });
+
+	let depsInstalled = false;
+	if (packageManager) {
+		depsInstalled = await installDependencies(packageManager, projectPath);
+		if (depsInstalled) {
+			const filesToFormat = addOnSuccessfulAddons.some((addon) => addon.addon.id === 'prettier')
+				? ['.']
+				: addOnFilesToFormat;
+
+			await formatFiles({
+				packageManager,
+				cwd: projectPath,
+				filesToFormat,
+				strategy: 'files-only'
+			});
+		}
+	}
+
+	return { directory: projectPath, addOnNextSteps, packageManager, depsInstalled };
+}
+
+async function createProjectFromPlayground(
+	url: string,
+	loadedAddons: LoadedAddon[],
+	answers: Record<string, OptionValues<any>>
+): Promise<void> {
+	// Fetch once (cached for the add-on's `run`); prompting stays here as user intent.
+	const { dependencies } = await preparePlayground(url);
+	const installDeps = await confirmExternalDependencies(Array.from(dependencies.keys()));
+
+	loadedAddons.unshift(createLoadedAddon(playground));
+	answers['playground'] = { url, installDeps };
+}
+
+async function confirmExternalDependencies(dependencies: string[]): Promise<boolean> {
+	if (dependencies.length === 0) return false;
+
+	const dependencyList = dependencies.map(color.warning).join(', ');
+	p.log.warn(
+		`The following external dependencies were found in the playground:\n\n${dependencyList}`
+	);
+
+	const installDeps = await p.confirm({
+		message: 'Do you want to install these external dependencies?',
+		initialValue: false
+	});
+	if (p.isCancel(installDeps)) {
+		p.cancel('Operation cancelled.');
+		process.exit(0);
+	}
+
+	return installDeps;
+}
+
+interface CreateVirtualWorkspaceOptions {
+	cwd: string;
+	template: TemplateType;
+	type: LanguageType;
+}
+
+export async function createVirtualWorkspace({
+	cwd,
+	template,
+	type
+}: CreateVirtualWorkspaceOptions): Promise<Workspace> {
+	const override: {
+		isKit?: boolean;
+		directory?: Workspace['directory'];
+		dependencies: Record<string, string>;
+	} = { dependencies: {} };
+
+	// These are our default project structure so we know that it's a kit project
+	if (template === 'minimal' || template === 'demo' || template === 'library') {
+		override.isKit = true;
+		override.directory = {
+			src: 'src',
+			lib: 'src/lib',
+			kitRoutes: 'src/routes'
+		};
+	}
+
+	// Let's read the package.json of the template we will use and add the dependencies to the override.
+	// It ships as a regular entry of the template's files manifest.
+	const dir = path.join(dist_dir, 'templates', template);
+	let files = JSON.parse(
+		fs.readFileSync(path.join(dir, `files.types=${type}.json`), 'utf-8')
+	) as Array<{
+		name: string;
+		contents: string;
+	}>;
+
+	// files identical across every language variant live in `files.shared.json`
+	const sharedPath = path.join(dir, 'files.shared.json');
+	if (fs.existsSync(sharedPath)) {
+		const shared = JSON.parse(fs.readFileSync(sharedPath, 'utf-8')) as typeof files;
+		files = [...shared, ...files];
+	}
+
+	const packageJson = JSON.parse(files.find((file) => file.name === 'package.json')!.contents);
+	override.dependencies = {
+		...packageJson.devDependencies,
+		...packageJson.dependencies,
+		...override.dependencies
+	};
+
+	const tentativeWorkspace = await createWorkspace({ cwd, override });
+
+	const virtualWorkspace: Workspace = {
+		...tentativeWorkspace,
+		language: type === 'typescript' ? 'ts' : 'js',
+		file: {
+			...tentativeWorkspace.file,
+			viteConfig:
+				type === 'typescript' ? common.filePaths.viteConfigTS : common.filePaths.viteConfig
+		}
+	};
+
+	return virtualWorkspace;
+}

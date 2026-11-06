@@ -1,27 +1,34 @@
-// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdirp } from '../utils.ts';
+import { saveAsset, listFiles, mkdirp, isBinaryFile } from '../utils.ts';
 
-/** @import { File, LanguageType } from '../index.ts' */
+/** @import { LanguageType } from '../index.ts' */
+/** @import { TemplateFile } from '../../core/common.ts' */
+
+const create_vite_path = path.dirname(
+	fileURLToPath(import.meta.resolve('create-vite/package.json'))
+);
 
 /**
  * Generates the 'svelte' template (vite-only, no SvelteKit) from create-vite bundled templates.
  * This template is internal-only and not shown in CLI prompts.
- * @param {string} dist
+ * @param {string} dist_dir
  */
-export function generate_vite_template(dist) {
-	const dir = path.join(dist, 'templates', 'svelte');
-	const assets = path.join(dir, 'assets');
-	mkdirp(assets);
+export function generate_vite_manifest(dist_dir) {
+	const Target_path = path.join(dist_dir, 'templates', 'svelte');
+	const assets = path.join(Target_path, 'assets');
+	mkdirp(Target_path);
 
-	/** @type {Record<LanguageType, File[]>} */
+	/** @type {Record<LanguageType, TemplateFile[]>} */
 	const types = {
 		typescript: [],
 		checkjs: [], // not used for vite template
 		none: []
 	};
+
+	/** @type {TemplateFile[]} */
+	const shared = [];
 
 	// Process both JS and TS variants
 	/** @type {{ src: string; lang: LanguageType }[]} */
@@ -30,50 +37,49 @@ export function generate_vite_template(dist) {
 		{ src: 'template-svelte-ts', lang: 'typescript' }
 	];
 
-	const createVitePackageJson = fileURLToPath(import.meta.resolve('create-vite/package.json'));
-	const createVitePath = path.dirname(createVitePackageJson);
 	for (const { src, lang } of variants) {
-		const srcDir = path.join(createVitePath, src);
-		const files = fs
-			.readdirSync(srcDir, { recursive: true, withFileTypes: true })
-			.filter((entry) => entry.isFile())
-			.map(({ parentPath, name }) => path.join(path.relative(srcDir, parentPath), name))
-			.sort();
+		const source_path = path.join(create_vite_path, src);
 
-		for (const name of files) {
-			const srcPath = path.join(srcDir, name);
-			const contents = fs.readFileSync(srcPath, 'utf8');
+		for (const name of listFiles(source_path)) {
+			const file_path = path.join(source_path, name);
 
-			// Handle _gitignore -> .gitignore rename (asset file)
-			if (name === '_gitignore' && lang === 'none') {
-				const dest = path.join(assets, 'DOT-gitignore');
-				fs.copyFileSync(srcPath, dest);
-				continue;
-			}
-			if (name === '_gitignore') continue;
-
-			// Binary/asset files go to assets folder (only process once for 'none' variant)
-			if (lang === 'none' && !/\.(js|ts|svelte|json|html|css|md)$/i.test(name)) {
-				const dest = path.join(assets, name.replace(/^\./, 'DOT-'));
-				mkdirp(path.dirname(dest));
-				fs.copyFileSync(srcPath, dest);
+			// create-vite replaces '_' with '.' in template file names because npm strips leading dots on publish
+			if (name === '_gitignore') {
+				if (lang === 'none')
+					shared.push({ name: '.gitignore', contents: fs.readFileSync(file_path, 'utf8') });
 				continue;
 			}
 
-			// Text files go to files.types=*.json
-			if (/\.(js|ts|svelte|json|html|css)$/i.test(name)) {
-				// Skip jsconfig.json for TS variant, skip tsconfig.json for JS variant
-				if (name === 'jsconfig.json' && lang === 'typescript') continue;
-				if (name === 'tsconfig.json' && lang === 'none') continue;
-
-				types[lang].push({ name, contents });
+			if (isBinaryFile(file_path)) {
+				if (lang === 'none') saveAsset({ from: file_path, assetsDir: assets, name });
+				continue;
 			}
+
+			const contents = fs.readFileSync(file_path, 'utf8');
+
+			if (name === 'jsconfig.json' && lang === 'typescript') continue;
+			if (name === 'tsconfig.json' && lang === 'none') continue;
+
+			types[lang].push({ name, contents });
+		}
+	}
+
+	// identical files across every used language variant belong in
+	// `files.shared.json` instead of being duplicated per variant
+	const variant_langs = /** @type {LanguageType[]} */ (['typescript', 'none']);
+	for (const name of new Set([...types.typescript, ...types.none].map((file) => file.name))) {
+		const entries = variant_langs.map((lang) => types[lang].find((file) => file.name === name));
+		const contents = entries[0]?.contents;
+		if (contents === undefined || !entries.every((entry) => entry?.contents === contents)) continue;
+		shared.push({ name, contents });
+		for (const lang of variant_langs) {
+			types[lang] = types[lang].filter((file) => file.name !== name);
 		}
 	}
 
 	// Write meta.json (internal template, minimal metadata)
 	fs.writeFileSync(
-		path.join(dir, 'meta.json'),
+		path.join(Target_path, 'meta.json'),
 		JSON.stringify(
 			{ title: 'Svelte', description: 'Vite + Svelte template (internal)' },
 			null,
@@ -81,14 +87,24 @@ export function generate_vite_template(dist) {
 		)
 	);
 
+	if (shared.length > 0) {
+		fs.writeFileSync(
+			path.join(Target_path, 'files.shared.json'),
+			JSON.stringify(shared, null, '\t')
+		);
+	}
+
 	// Write files for each language type
 	fs.writeFileSync(
-		path.join(dir, 'files.types=typescript.json'),
+		path.join(Target_path, 'files.types=typescript.json'),
 		JSON.stringify(types.typescript, null, '\t')
 	);
 	fs.writeFileSync(
-		path.join(dir, 'files.types=checkjs.json'),
+		path.join(Target_path, 'files.types=checkjs.json'),
 		JSON.stringify([], null, '\t') // empty, not supported for vite template
 	);
-	fs.writeFileSync(path.join(dir, 'files.types=none.json'), JSON.stringify(types.none, null, '\t'));
+	fs.writeFileSync(
+		path.join(Target_path, 'files.types=none.json'),
+		JSON.stringify(types.none, null, '\t')
+	);
 }

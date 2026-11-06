@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as walk from 'empathic/walk';
+import * as v from 'valibot';
 import { isNodeError } from '../core/common.ts';
 
 /**
@@ -45,41 +46,23 @@ export function replace(contents: string, kv: Record<string, string>): string {
 	return contents;
 }
 
-export function kv(name: string): Record<string, string> {
-	const protocolName = name.startsWith('@') ? name.split('/')[0] : name;
-	return {
-		'$SV-PROTOCOL-NAME-TODO$': protocolName,
-		'$SV-NAME-TODO$': name
-	};
-}
-
-// files that have kv's in the contents that we replace
-const withReplaceExtensions = ['.md', '.js', '.ts', '.json'];
-
 export function copy(
 	from: string,
 	to: string,
-	rename: (basename: string) => string = identity,
-	kv: Record<string, string> = {}
+	rename: (basename: string) => string = identity
 ): void {
 	if (!fs.existsSync(from)) return;
-	const stats = fs.statSync(from);
-
-	if (stats.isDirectory()) {
-		fs.readdirSync(from).forEach((file) => {
-			copy(path.join(from, file), path.join(to, rename(file)), rename, kv);
-		});
-	} else {
+	if (fs.statSync(from).isFile()) {
 		mkdirp(path.dirname(to));
-		if (withReplaceExtensions.some((ext) => from.endsWith(ext))) {
-			fs.writeFileSync(to, replace(fs.readFileSync(from, 'utf-8'), kv));
-		} else {
-			fs.copyFileSync(from, to);
-		}
+		fs.copyFileSync(from, to);
+		return;
 	}
+
+	fs.readdirSync(from).forEach((file) => {
+		copy(path.join(from, file), path.join(to, rename(file)), rename);
+	});
 }
 
-/** Sorted `/`-separated paths relative to `cwd` (posix even on Windows: names are matched by prefix and shipped in dist). */
 export function listFiles(cwd: string): string[] {
 	return fs
 		.readdirSync(cwd, { recursive: true, withFileTypes: true })
@@ -90,20 +73,73 @@ export function listFiles(cwd: string): string[] {
 		.sort();
 }
 
-/** `DOT-` prefix so dotfiles survive publishing; renamed back at runtime by `fetchAssets()`. */
+const BINARY_EXTENSION = new Set(['.png']);
+const TEXT_EXTENSION = new Set([
+	'.css',
+	'.html',
+	'.js',
+	'.json',
+	'.md',
+	'.svelte',
+	'.svg',
+	'.ts',
+	'.txt',
+	'.yml'
+]);
+const TEXT_EXTENSIONLESS = new Set(['.gitignore']);
+export function isBinaryFile(file_path: string): boolean {
+	const extension = path.extname(file_path).toLowerCase();
+	if (BINARY_EXTENSION.has(extension)) return true;
+	if (TEXT_EXTENSION.has(extension)) return false;
+	if (TEXT_EXTENSIONLESS.has(path.basename(file_path).toLowerCase())) return false;
+
+	// not in any list — sniff the content to decide
+	const buffer = fs.readFileSync(file_path);
+	// a NUL byte never appears in utf8 text; utf16 also starts with one
+	let text = !buffer.includes(0);
+	if (text) {
+		// invalid utf8 is not expected for text files, so treat it as binary
+		try {
+			new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+		} catch {
+			text = false;
+		}
+	}
+
+	console.warn(
+		`${path.basename(file_path)} was sniffed. If performance is degraded, consider adding it to a list in ${import.meta.dirname}.`
+	);
+
+	return !text;
+}
+
+/**
+ * Save a single asset file verbatim into an `assets` output dir, prefixing
+ * leading-dot names with `DOT-` so dotfiles survive publishing. Runtime
+ * renames them back via `fetchAssets()`. Shared by template and addon builds so all
+ * three emit assets with the same logic.
+ */
 export function saveAsset({
 	from,
 	assetsDir,
-	name,
-	destName
+	name
 }: {
 	from: string;
 	assetsDir: string;
 	name: string;
-	destName?: string;
 }): string {
-	const dest = path.join(assetsDir, (destName ?? name).replace(/^\./, 'DOT-'));
+	const dest = path.join(assetsDir, name.replace(/^\./, 'DOT-'));
 	mkdirp(path.dirname(dest));
 	fs.copyFileSync(from, dest);
 	return dest;
+}
+
+type NonEmptyArray<T> = [T, ...T[]];
+export function invalid_json(file_path: string, issues: NonEmptyArray<v.GenericIssue>): Error {
+	const error = [
+		`invalid JSON in ${file_path}:`,
+		issues.map((issue) => (issue.path ? `${v.getDotPath(issue)}: ${issue.message}` : issue.message))
+	].join('\n');
+
+	return new Error(error);
 }
