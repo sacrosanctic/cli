@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { defineConfig } from 'tsdown';
-import { generate_addon_content } from './packages/sv/src/create/scripts/generate-addon-template.js';
+import { generate_addon_manifest } from './packages/sv/src/create/scripts/generate-addon-template.js';
 import { generate_kit_template } from './packages/sv/src/create/scripts/generate-kit-template.js';
 import { generate_vite_template } from './packages/sv/src/create/scripts/generate-vite-template.js';
 import { dist_dir, mkdirp } from './packages/sv/src/create/utils.ts';
@@ -237,7 +237,7 @@ export async function generate_cli_templates() {
 
 	await generate_kit_template(dist_dir);
 	generate_vite_template(dist_dir);
-	generate_addon_content(dist_dir);
+	generate_addon_manifest(dist_dir);
 	fs.cpSync('packages/sv/src/create/playground', path.join(dist_dir, 'playground'), {
 		recursive: true
 	});

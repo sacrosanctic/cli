@@ -90,19 +90,57 @@ export function listFiles(cwd: string): string[] {
 		.sort();
 }
 
+const BINARY_EXTENSION = new Set(['.png']);
+const TEXT_EXTENSION = new Set([
+	'.css',
+	'.html',
+	'.js',
+	'.json',
+	'.md',
+	'.svelte',
+	'.svg',
+	'.ts',
+	'.txt',
+	'.yml'
+]);
+const TEXT_EXTENSIONLESS = new Set(['.gitignore']);
+export function isBinaryFile(file_path: string): boolean {
+	const extension = path.extname(file_path).toLowerCase();
+	if (BINARY_EXTENSION.has(extension)) return true;
+	if (TEXT_EXTENSION.has(extension)) return false;
+	if (TEXT_EXTENSIONLESS.has(path.basename(file_path).toLowerCase())) return false;
+
+	// not in any list — sniff the content to decide
+	const buffer = fs.readFileSync(file_path);
+	// a NUL byte never appears in utf8 text; utf16 also starts with one
+	let text = !buffer.includes(0);
+	if (text) {
+		// invalid utf8 is not expected for text files, so treat it as binary
+		try {
+			new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+		} catch {
+			text = false;
+		}
+	}
+
+	console.warn(
+		`${path.basename(file_path)} was sniffed. If performance is degraded, consider adding it to a list in ${import.meta.dirname}.`
+	);
+
+	return !text;
+}
+
 /** `DOT-` prefix so dotfiles survive publishing; renamed back at runtime by `fetchAssets()`. */
 export function saveAsset({
 	from,
 	assetsDir,
-	name,
-	destName
+	name
 }: {
 	from: string;
 	assetsDir: string;
 	name: string;
-	destName?: string;
 }): string {
-	const dest = path.join(assetsDir, (destName ?? name).replace(/^\./, 'DOT-'));
+	const dest = path.join(assetsDir, name.replace(/^\./, 'DOT-'));
 	mkdirp(path.dirname(dest));
 	fs.copyFileSync(from, dest);
 	return dest;
