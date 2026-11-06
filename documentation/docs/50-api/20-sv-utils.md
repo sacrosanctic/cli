@@ -276,10 +276,11 @@ Lower-level building blocks, both reading candidate files through an injected `r
 
 Returns a transform for `pnpm-workspace.yaml` that adds packages to the pnpm "allow builds" config. Use with `sv.file` when the project uses pnpm.
 
-`cwd` is the target project: the pnpm version that would run there (via `pnpm --version`) decides the shape, so the invoker's `packageManager` pin is not used.
+`cwd` is the target project: the pnpm version that would run there (via `pnpm.detectPnpmVersion`) decides the shape, so the invoker's `packageManager` pin is not used.
 
-- pnpm `>= 11`: writes to the unified `allowBuilds` map (`{ pkg: true }`), migrating any legacy `onlyBuiltDependencies` list into the map.
-- pnpm `< 11`: writes to the legacy `onlyBuiltDependencies` list.
+- pnpm `< 10.5`: no-op.
+- pnpm `10.5` to `10.25`: writes `onlyBuiltDependencies`.
+- pnpm `>= 10.26`: writes `allowBuilds` map (`{ pkg: true }`), migrating any legacy `onlyBuiltDependencies`.
 
 ```js
 // @noErrors
@@ -291,6 +292,18 @@ if (packageManager === 'pnpm') {
 		pnpm.allowBuilds({ cwd, packages: ['my-native-dep'] })
 	);
 }
+```
+
+### `pnpm.detectPnpmVersion`
+
+Detects the version of pnpm that would run in `cwd`: Uses `pnpm --version` interally. Results are memoised per directory. Use it to branch on the target project's pnpm version, the same way `pnpm.allowBuilds` does internally.
+
+```js
+// @noErrors
+import { pnpm } from '@sveltejs/sv-utils';
+
+// inside an add-on's `run({ sv, cwd })`:
+const version = pnpm.detectPnpmVersion(cwd);
 ```
 
 ## Demo pages
