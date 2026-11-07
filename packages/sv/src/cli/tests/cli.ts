@@ -5,6 +5,7 @@ import { parse } from '@sveltejs/sv-utils';
 import * as find from 'empathic/find';
 import { exec } from 'tinyexec';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { normalizePosix } from '../../core/common.ts';
 
 /** Matches `sv@1.2.3`, `sv@0.0.0-next.0`, `sv@1.0.0-rc.1+build.5`. */
 const SV_VERSION_REGEX = /sv@\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?/g;
@@ -150,7 +151,7 @@ describe('cli', () => {
 				if (!fs.statSync(path.resolve(projectPath, relativeFile)).isFile()) continue;
 				if (['.svg', '.env'].some((ext) => relativeFile.endsWith(ext))) continue;
 
-				const normalized = relativeFile.replace(/\\/g, '/');
+				const normalized = normalizePosix(relativeFile);
 
 				// Group ai-tools files by directory for manifest comparison
 				if (aiToolsPattern.test(normalized)) {
