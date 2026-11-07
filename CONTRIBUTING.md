@@ -128,12 +128,10 @@ pnpm build && pnpm test --project cli --update all
 
 ### Coding style
 
-Ensure the following passes:
-
-- `pnpm lint`
-- `pnpm check`
-
-Use `pnpm format` to format the code.
+- Internal variables are written with `snake_case` while external APIs are written with `camelCase`
+- Provide a single object as the argument to public APIs. This object can have multiple properties
+- Avoid creating new test projects under `packages/kit/test/apps` but reuse an existing one when possible
+- Ensure `pnpm lint` and `pnpm check` pass. You can run `pnpm format` to format the code
 
 ## Updating dependencies
 
