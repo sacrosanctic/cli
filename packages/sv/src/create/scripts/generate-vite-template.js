@@ -24,10 +24,11 @@ export function generate_vite_template(dist) {
 	};
 
 	// Process both JS and TS variants
-	const variants = /** @type {const} */ ([
-		{ src: 'template-svelte', lang: /** @type {LanguageType} */ ('none') },
-		{ src: 'template-svelte-ts', lang: /** @type {LanguageType} */ ('typescript') }
-	]);
+	/** @type {{ src: string; lang: LanguageType }[]} */
+	const variants = [
+		{ src: 'template-svelte', lang: 'none' },
+		{ src: 'template-svelte-ts', lang: 'typescript' }
+	];
 
 	const createVitePackageJson = fileURLToPath(import.meta.resolve('create-vite/package.json'));
 	const createVitePath = path.dirname(createVitePackageJson);
